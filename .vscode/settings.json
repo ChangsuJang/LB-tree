@@ -1,0 +1,52 @@
+{
+    "C_Cpp.dimInactiveRegions": false,
+    "C_Cpp.errorSquiggles": "disabled",
+    "files.associations": {
+        "pre_define.h": "c",
+        "lb_tree.h": "c",
+        "functional": "c",
+        "atomic": "c",
+        "operation_meta.h": "c",
+        "array": "c",
+        "deque": "c",
+        "string": "c",
+        "unordered_map": "c",
+        "vector": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "string.h": "c",
+        "assert.h": "c",
+        "optional": "c",
+        "istream": "c",
+        "ostream": "c",
+        "system_error": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "utility": "c",
+        "typeinfo": "c",
+        "*.tcc": "c",
+        "stdbool.h": "c",
+        "cstddef": "c",
+        "iterator": "c",
+        "memory": "c",
+        "memory_resource": "c",
+        "random": "c",
+        "fstream": "c",
+        "new": "c",
+        "sstream": "c",
+        "stdexcept": "c",
+        "streambuf": "c"
+    }
+    "settings.cycle": [
+        {
+        "id": "copilot",
+          "overrideWorkspaceSettings": true,
+          "values": [{
+            "github.copilot.inlineSuggest.enable": false
+          },
+          {
+            "github.copilot.inlineSuggest.enable": true
+          }
+       ]},
+    ],
+}

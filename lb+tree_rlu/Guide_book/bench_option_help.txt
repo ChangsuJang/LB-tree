@@ -1,0 +1,34 @@
+
+< HOW TO SET THE OPTION (DEFAILT: 0.txt)>
+
+////////// HARDWARE SPEC //////////
+--dram_size 1000                    : The size of DRAM in Mbytes for the test
+--ssd_size 4000                     : The size of SSD in Mbytes for the test
+--block_size 128000                 : The size of Block in bytes for the test
+--page_size 4000                    : The size of Page in bytes for the test
+
+////////// WORK LOAD //////////     (If both duration and cycle are non-zero. process is terminated by duration condtion.)
+--duration 10000                    : Test duration in milliseconds (0 = Test as much as given cycles)
+--cycle 200                         : Test cycles (0 = Test as long as given duration)
+--add_ratio 35                      : The proportion of add operations in the overall operation. (100 = 100 percent) 
+--remove_ratio 20                   : The proportion of remove operations in the overall operation. (100 = 100 percent)
+--search_ratio 40                   : The proportion of search operations in the overall operation. (100 = 100 percent)
+--scan_ratio 5                      : The proportion of scan operations in the overall operation. (100 = 100 percent)
+
+////////// HB+TREE META DATA //////////
+--tree_degree 3                     : Set degree of tree (min = 3)
+--partition_size 0                  : The size of Partition (min = page size) (0 = automatically set[partition size = block size])
+--static_partition_size 0           : The size of Static partition (min = page size) (0 = automatically set[partition size = block size])
+--dynamic_partition_size 0          : The size of Dynamic Partition (min = page size) (0 = automatically set[partition size = block size])
+--dynamic_partition_bucket_size 0   : The size of Dynamic partition list (min = page size) (0 = automatically set[list size = page size])
+--split_threshold_ratio 70          : Percentage of a partition's capacity at which it will split (100 = 100 percent)
+--merge_threshold_ratio 25          : Percentage of a partition's capacity at which it will merge (100 = 100 percent)
+--distribution_ratio 35             : Percentage of a partition's capacity at which it will distribute (100 = 100 percent)
+--load_tree -1                      : Load from exist hb+tree (./hb+tree_list/<load_tree>) (-1 = nothing)
+////////// THREADS META DATA //////////
+--nb_serve_threads 1                : Number of serve threads (min = 1) (EXEC MODE = pure is set to [nb_single_threads = 1]) 
+--nb_back_threads 1                 : Number of backend threads (min = 1)
+--rlu_max_ws 1                      : Number of RLU_write sets (min = 1)
+--base_seed 0                       : The base seed to be used for the run (0 = automatically set by current time)
+
+

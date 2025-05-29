@@ -1,0 +1,19 @@
+////////// WORK LOAD //////////
+--duration 10000
+--cycle 0
+--add_ratio 10
+--remove_ratio 10
+--update_ratio 0
+--search_ratio 80
+--scan_ratio 0
+////////// HB+TREE META DATA //////////
+--inner_node_degree 10
+--leaf_node_degree 10
+--split_threshold_ratio 75
+--merge_threshold_ratio 25
+--distribution_ratio 50
+--load_tree 0
+////////// THREADS META DATA //////////
+--nb_threads 1
+--rlu_max_ws 1
+--base_seed 0
