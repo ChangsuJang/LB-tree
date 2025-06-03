@@ -220,6 +220,7 @@ void free_rand(unsigned short *seed);
 int op_make();
 item_t item_make();
 int key_compare(int src, int obj);
+void bench_set_file_read(const char *filename, int *argc, char ***argv);
 
 // THREADS					//
 void barrier_init(barrier_t *b, int n);
@@ -238,6 +239,8 @@ void local_rlu_thread_init(rlu_multi_thread_data_t *p_data);
 void local_rlu_thread_set(pthread_t* p_thread, rlu_multi_thread_data_t *p_data, barrier_t *p_barrier, pthread_attr_t *p_attr, unsigned short *p_seed, root_node_t* p_root);
 void local_rlu_thread_wait(pthread_t *p_thread);
 
+void local_rlu_thread_finish(rlu_multi_thread_data_t *p_data);
+
 // PRINT					//
 void item_print(item_t src);
 int so_log_print(so_log_t so_log, int option);
@@ -250,5 +253,6 @@ void local_rlu_thread_log_print (rlu_multi_thread_data_t *p_data, int option);
 // TEST					//
 void *single_test(void *arg);
 void *rlu_test(void *arg);
+
 
 #endif

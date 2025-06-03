@@ -54,8 +54,8 @@ void bench_set_file_read(const char *filename, int *argc, char ***argv) {
             token = strtok(NULL, " \t\n");
         }
     }
-
     fclose(file);
+    return;
 }
 
 // RANDOM SEED          //
@@ -91,6 +91,8 @@ int op_make() {
     if (r <= stack) return 4;
     stack = stack + work_meta.ratio_scan;
     if (r <= stack) return 5;
+
+    return 0;
 }
 
 item_t item_make() {
@@ -460,16 +462,16 @@ void local_single_thread_log_print(single_thread_data_t *p_data, int option) {
 }
 
 void local_rlu_thread_print(rlu_multi_thread_data_t *p_data, int option) {
-    int total_try_add = 0, total_add = 0;
-    int total_try_remove = 0, total_remove = 0;
-    int total_try_update = 0, total_update = 0;
-    int total_try_search = 0, total_search = 0;
-    int total_try_scan = 0, total_scan = 0;
-    int total_diff = 0;
-    int total_try_header_split = 0, total_header_split = 0;
-    int total_try_header_merge = 0, total_header_merge = 0;
-    int total_try_inner_split = 0, total_inner_split = 0;
-    int total_try_inner_merge = 0, total_inner_merge = 0;
+    unsigned int total_try_add = 0, total_add = 0;
+    unsigned int total_try_remove = 0, total_remove = 0;
+    unsigned int total_try_update = 0, total_update = 0;
+    unsigned int total_try_search = 0, total_search = 0;
+    unsigned int total_try_scan = 0, total_scan = 0;
+    unsigned int total_diff = 0;
+    unsigned int total_try_header_split = 0, total_header_split = 0;
+    unsigned int total_try_header_merge = 0, total_header_merge = 0;
+    unsigned int total_try_inner_split = 0, total_inner_split = 0;
+    unsigned int total_try_inner_merge = 0, total_inner_merge = 0;
 
     for (int i = 0; i < th_meta.nb_threads; i++) {
         printf("\n---------- THREAD %ld ----------\n", p_data[i].uniq_id);
@@ -515,25 +517,25 @@ void local_rlu_thread_print(rlu_multi_thread_data_t *p_data, int option) {
     }
 
     printf("\n---------- TOTAL THREAD ----------\n");
-    printf("Total TRY ADD           : %d\n", total_try_add);
-    printf("Total ADD               : %d\n", total_add);
-    printf("Total TRY REMOVE        : %d\n", total_try_remove);
-    printf("Total REMOVE            : %d\n", total_remove);
-    printf("Total TRY UPDATE        : %d\n", total_try_update);
-    printf("Total UPDATE            : %d\n", total_update);
-    printf("Total TRY SEARCH        : %d\n", total_try_search);
-    printf("Total SEARCH            : %d\n", total_search);
-    printf("Total TRY SCAN          : %d\n", total_try_scan);
-    printf("Total SCAN              : %d\n", total_scan);
-    printf("Total TRY HEADER SPLIT  : %d\n", total_try_header_split);
-    printf("Total HEADER SPLIT      : %d\n", total_header_split);
-    printf("Total TRY HEADER MERGE  : %d\n", total_try_header_merge);
-    printf("Total HEADER MERGE      : %d\n", total_header_merge);
-    printf("Total TRY INNER SPLIT   : %d\n", total_try_inner_split);
-    printf("Total INNER SPLIT       : %d\n", total_inner_split);
-    printf("Total TRY INNER MERGE   : %d\n", total_try_inner_merge);
-    printf("Total INNER MERGE       : %d\n", total_inner_merge);
-    printf("Total Modified Size     : %d\n", total_diff);
+    printf("Total TRY ADD           : %u\n", total_try_add);
+    printf("Total ADD               : %u\n", total_add);
+    printf("Total TRY REMOVE        : %u\n", total_try_remove);
+    printf("Total REMOVE            : %u\n", total_remove);
+    printf("Total TRY UPDATE        : %u\n", total_try_update);
+    printf("Total UPDATE            : %u\n", total_update);
+    printf("Total TRY SEARCH        : %u\n", total_try_search);
+    printf("Total SEARCH            : %u\n", total_search);
+    printf("Total TRY SCAN          : %u\n", total_try_scan);
+    printf("Total SCAN              : %u\n", total_scan);
+    printf("Total TRY HEADER SPLIT  : %u\n", total_try_header_split);
+    printf("Total HEADER SPLIT      : %u\n", total_header_split);
+    printf("Total TRY HEADER MERGE  : %u\n", total_try_header_merge);
+    printf("Total HEADER MERGE      : %u\n", total_header_merge);
+    printf("Total TRY INNER SPLIT   : %u\n", total_try_inner_split);
+    printf("Total INNER SPLIT       : %u\n", total_inner_split);
+    printf("Total TRY INNER MERGE   : %u\n", total_try_inner_merge);
+    printf("Total INNER MERGE       : %u\n", total_inner_merge);
+    printf("Total Modified Size     : %u\n", total_diff);
 }
 
 

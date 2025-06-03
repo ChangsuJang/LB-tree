@@ -86,8 +86,7 @@ typedef struct smo {
     int operator;
     inner_node_t *p_master_inner, *p_slave_inner;
     leaf_node_t *p_master_header, *p_slave_header;
-    int 
-} smo_t;
+}smo_t;
 
 ////////////////////////////////////////////////////////////////
 // INTERFACE
@@ -96,8 +95,8 @@ typedef struct smo {
 root_node_t *pure_new_root();
 root_node_t *rlu_new_root();
 
-void local_new_rlu_multi_thread_smo(rlu_multi_thread_data_t *p_data);
-void local_new_single_thread_smo(single_thread_data_t *p_data);
+void rlu_new_smo(rlu_multi_thread_data_t *p_data);
+void pure_new_smo(single_thread_data_t *p_data);
 
 // count_check  -2 ==: SLAVE_FREEZE         -1 ==: MASTER_FREEZE
 

@@ -368,7 +368,7 @@ int rlu_inner_entry_search(rlu_multi_thread_data_t *p_data, inner_node_t **pp_in
     int i, result;
     inner_node_t *p_inner = *pp_inner;
 
-    i, result = 0;
+    result = 0;
 
     while (1) {
         result = key_compare(input_key, p_inner->p_next->min_key);
@@ -386,11 +386,11 @@ int rlu_inner_entry_search(rlu_multi_thread_data_t *p_data, inner_node_t **pp_in
 }
 
 // FREE
-inner_node_t *pure_free_inner(inner_node_t *p_inner) {
-    return NULL;
+void pure_free_inner(inner_node_t *p_inner) {
+    return;
 }
 
-inner_node_t *rlu_free_inner(rlu_thread_data_t *p_self ,inner_node_t *p_inner) {
+void rlu_free_inner(rlu_thread_data_t *p_self ,inner_node_t *p_inner) {
     if (!p_self || !p_inner) {
         perror("Invalid parameter for rlu_free_inner");
         exit(1);
@@ -587,7 +587,10 @@ restart:
 
     result = rlu_leaf_search(p_data, p_header, input, option);
 
-    if (result == LOST) {goto restart;}
+    if (result == LOST) {
+        printf("LB_TREE_SEARCH\n");
+        goto restart;
+    }
 
     return result;
 }
@@ -609,6 +612,7 @@ int rlu_lb_tree_range_scan(rlu_multi_thread_data_t *p_data, int start, int end, 
     rlu_thread_data_t *p_self = p_data->p_rlu_td;
 
 restart:
+    p_header = NULL;
     RLU_READER_LOCK (p_self);
 
     p_curr_root = (root_node_t *)RLU_DEREF(p_self, (p_data->p_root));
@@ -630,7 +634,10 @@ restart:
 
     result = rlu_leaf_range_scan(p_data, p_header, start, end, option);
 
-    if (result == LOST) {goto restart;}
+    if (result == LOST) {
+        printf("LB_TREE_SCAN\n");
+        goto restart;
+    }
 
     return result;
 }
@@ -646,13 +653,14 @@ int rlu_lb_tree_add(rlu_multi_thread_data_t *p_data, item_t input, int option) {
         exit(1);
     }
 
-    int curr_level, result, entry_number, state_check;
+    int curr_level, result, entry_number;
     root_node_t *p_curr_root;
     inner_node_t *p_inner;
     leaf_node_t *p_header;
     rlu_thread_data_t *p_self = p_data->p_rlu_td;
 
 restart:
+    p_header = NULL;
     RLU_READER_LOCK (p_self);
 
     p_curr_root = (root_node_t *)RLU_DEREF(p_self, (p_data->p_root));
@@ -674,7 +682,10 @@ restart:
 
     result = rlu_leaf_add(p_data, p_header, input, option);
     
-    if (result == LOST) {goto restart;}
+    if (result == LOST) {
+        printf("LB_TREE_ADD\n");
+        goto restart;
+    }
 
     return result;
 }
@@ -689,13 +700,14 @@ int rlu_lb_tree_remove(rlu_multi_thread_data_t *p_data, item_t input, int option
         exit(1);
     }
 
-    int curr_level, result, entry_number, state_check;
+    int curr_level, result, entry_number;
     root_node_t *p_curr_root;
     inner_node_t *p_inner;
     leaf_node_t *p_header;
     rlu_thread_data_t *p_self = p_data->p_rlu_td;
 
 restart:
+    p_header = NULL;
     RLU_READER_LOCK (p_self);
 
     p_curr_root = (root_node_t *)RLU_DEREF(p_self, (p_data->p_root));
@@ -717,7 +729,10 @@ restart:
 
     result = rlu_leaf_remove(p_data, p_header, input, option);
 
-    if (result == LOST) {goto restart;}
+    if (result == LOST) {
+        printf("LB_TREE_REMOVE\n");
+        goto restart;
+    }
 
     return result;
 }
@@ -799,12 +814,11 @@ int rlu_header_release(rlu_multi_thread_data_t *p_data, int command, int option)
         exit(1);
     }
     
-    int operator, result;
+    int operator;
     leaf_node_t *p_master, *p_slave;
     rlu_thread_data_t *p_self = p_data->p_rlu_td;
 
 restart:
-    result = 0;
     operator = p_data->p_smo->operator;
     RLU_READER_LOCK(p_self);
 
@@ -849,7 +863,7 @@ restart:
                 return SUCCESS;
             }
     }
-
+    return NOTHING;
 }
 
 int pure_header_split(single_thread_data_t *p_data, int option) {
@@ -862,12 +876,11 @@ int rlu_header_split(rlu_multi_thread_data_t *p_data, int option) {
         exit(1);
     }
     
-    int i, result, split_point;
+    int i, split_point;
     leaf_node_t *p_header, *p_curr, *p_next, *p_new;
     rlu_thread_data_t *p_self = p_data->p_rlu_td;
 
 restart:
-    result, i = 0;
     RLU_READER_LOCK(p_self);
 
     p_curr = (leaf_node_t *)RLU_DEREF(p_self, (p_data->p_smo->p_master_header));
@@ -917,13 +930,14 @@ int rlu_header_partner_search(rlu_multi_thread_data_t *p_data, inner_node_t **pp
 
     root_node_t *p_curr_root;
     inner_node_t *p_inner;
-    leaf_node_t *p_master_header, *p_regist_header;
+    leaf_node_t *p_regist_header;
     rlu_thread_data_t *p_self = p_data->p_rlu_td;
 
     master_key = p_data->p_smo->p_master_header->item.key;
 
 restart:
-    i, result = 0;
+    entry_number = 0;
+    result = 0;
     p_regist_header = NULL;
     
     RLU_READER_LOCK(p_self);
@@ -936,10 +950,7 @@ restart:
         if (curr_level > 1) {
             p_inner = (inner_node_t *)RLU_DEREF(p_self, (p_inner->entry[entry_number].p_inner_child));
             curr_level = p_inner->level;
-        }else {
-            p_master_header = (leaf_node_t *)RLU_DEREF(p_self, (p_inner->entry[entry_number].p_leaf_child));
-            curr_level--;
-        }
+        }else {curr_level--;}
     }
 
     if (p_curr_root->p_inner->level == 1 && p_inner->count == 1) {
@@ -1001,14 +1012,14 @@ int rlu_header_merge(rlu_multi_thread_data_t *p_data, int option) {
         exit(1);
     }
     
-    int i, result, slave_key;
+    int result, slave_key;
     leaf_node_t *p_header, *p_prev, *p_curr, *p_next;
     rlu_thread_data_t *p_self = p_data->p_rlu_td;
 
     slave_key = p_data->p_smo->p_slave_header->item.key;
 
 restart:
-    result, i = 0;
+    result = 0;
     RLU_READER_LOCK(p_self);
 
     p_prev = (leaf_node_t *)RLU_DEREF(p_self, (p_data->p_smo->p_master_header));
@@ -1125,6 +1136,8 @@ restart:
         RLU_READER_UNLOCK(p_self);
         return SUCCESS;
     }
+
+    return NOTHING;
 }
 
 int rlu_inner_smo_check(rlu_multi_thread_data_t *p_data, inner_node_t *p_master, int command) {
@@ -1192,12 +1205,11 @@ int rlu_inner_split (rlu_multi_thread_data_t *p_data, int option) {
         exit(1);
     }
 
-    int i, result, split_point;
+    int split_point;
     inner_node_t *p_new, *p_curr, *p_next;
     rlu_thread_data_t *p_self = p_data->p_rlu_td;
 
 restart:
-    i, result = 0;
     RLU_READER_LOCK(p_self);
 
     p_curr = (inner_node_t *)RLU_DEREF(p_self, (p_data->p_smo->p_master_inner));
@@ -1243,12 +1255,11 @@ int pure_inner_split_update(single_thread_data_t *p_data, inner_node_t *p_inner,
 int rlu_inner_split_update(rlu_multi_thread_data_t *p_data, inner_node_t *p_inner, int option) {
     if (!p_data || !p_inner) { return LOST;}
 
-    int i, m_point, child_key, result, operator;
+    int i, m_point, child_key, result;
     rlu_thread_data_t *p_self = p_data->p_rlu_td;
 
 restart:
-    i, result = 0;
-    operator = p_data->p_smo->operator;
+    result = 0;
 
     RLU_READER_LOCK(p_self);
 
@@ -1316,19 +1327,16 @@ int rlu_parent_split_update(rlu_multi_thread_data_t *p_data, int parent_level, i
         exit(1);
     }
 
-    int  operation, curr_level, root_level, master_key, entry_number, result;
+    int curr_level, master_key, entry_number, result;
     root_node_t *p_curr_root;
-    inner_node_t *p_inner, *p_master_inner, *p_slave_inner;
-    leaf_node_t *p_master_header, *p_slave_header;
+    inner_node_t *p_inner;
     rlu_thread_data_t *p_self = p_data->p_rlu_td;
-
-    result = 0;
-    operation = p_data->p_smo->operator;
 
     if (parent_level == 1) {master_key = p_data->p_smo->p_master_header->item.key;}
     else {master_key = p_data->p_smo->p_master_inner->min_key;}
 
 restart:
+    result = 0;
     RLU_READER_LOCK(p_self);
 
     p_curr_root = (root_node_t *)RLU_DEREF(p_self, (p_data->p_root));
@@ -1370,13 +1378,14 @@ int rlu_inner_partner_search(rlu_multi_thread_data_t *p_data, inner_node_t **pp_
     int i, master_key, curr_level, entry_number, master_number, slave_number, result;
 
     root_node_t *p_curr_root;
-    inner_node_t *p_inner, *p_master_inner, *p_regist_inner;
+    inner_node_t *p_inner, *p_regist_inner;
     rlu_thread_data_t *p_self = p_data->p_rlu_td;
 
     master_key = p_data->p_smo->p_master_inner->min_key;
 
 restart:
-    i, result = 0;
+    result = 0;
+    entry_number = 0;
     p_regist_inner = NULL;
     
     RLU_READER_LOCK(p_self);
@@ -1447,7 +1456,7 @@ int rlu_inner_merge(rlu_multi_thread_data_t *p_data, int option) {
         exit(1);
      }
 
-     int i, result;
+     int i;
      inner_node_t *p_prev, *p_curr, *p_next;
      rlu_thread_data_t *p_self = p_data->p_rlu_td;
 
@@ -1520,7 +1529,6 @@ int rlu_lb_tree_merge(rlu_multi_thread_data_t *p_data, int option) {
 
     int result, operator, child_level, parent_level;
     inner_node_t *p_parent_inner;
-    rlu_thread_data_t *p_self = p_data->p_rlu_td;
 
     operator = p_data->p_smo->operator;
     child_level = abs(operator % 10);
@@ -1646,20 +1654,19 @@ int rlu_lb_tree_print(rlu_multi_thread_data_t *p_data, int start_lv, int end_lv,
         exit(1);
     }
 
-    int result;
     rlu_thread_data_t *p_self = p_data->p_rlu_td;
     inner_node_t *p_first_inner, *p_inner;
     leaf_node_t *p_leaf;
 
     RLU_READER_LOCK(p_self);
     
-    result = 0;
     p_first_inner = (inner_node_t *)RLU_DEREF(p_self, (p_data->p_root->p_inner));
     p_inner = p_first_inner;
     p_leaf = NULL;
 
     if (start_lv > p_inner->level) { start_lv = p_inner->level;}
-    if (end_lv < 0) { end_lv = 0;}
+    if (end_lv < 0) { end_lv = start_lv - 1;}
+    
 
     while(p_inner->level >= end_lv) {
         rlu_inner_print(p_data, p_inner, option);

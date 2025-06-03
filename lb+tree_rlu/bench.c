@@ -9,7 +9,7 @@
 ////////////////////////////////////////////////////////////////
 
 void options_meta_set(int argc, char **argv) {
-    int i, j, c;
+    int i, c;
 
     struct option long_options[] = {
         {"duration",                        required_argument, NULL, 0},
@@ -42,9 +42,9 @@ void options_meta_set(int argc, char **argv) {
 
     lb_meta.inner_node_degree = DEFAULT_TREE_DOCK_DEGREE;
 	lb_meta.leaf_node_degree = DEFAULT_NODE_DOCK_DEGREE;
-	int split_thres_r = DEFAULT_SPLIT_THRESHOLD_RATIO;
-	int merge_thres_r = DEFAULT_MERGE_THRESHOLD_RATIO;
-	int distri_r = DEFAULT_DISTRIBUTION_RATIO;
+	lb_meta.split_thres_r = DEFAULT_SPLIT_THRESHOLD_RATIO;
+	lb_meta.merge_thres_r = DEFAULT_MERGE_THRESHOLD_RATIO;
+	lb_meta.distri_r = DEFAULT_DISTRIBUTION_RATIO;
     lb_meta.load_tree = DEFAULT_LOAD_TREE;
 
     th_meta.nb_threads = DEFAULT_NB_THREADS;
@@ -109,9 +109,9 @@ void options_meta_set(int argc, char **argv) {
 
     assert(lb_meta.inner_node_degree >= 3 && lb_meta.inner_node_degree <= MAX_INNER_DEGREE);
     assert(lb_meta.leaf_node_degree >= 3 && lb_meta.leaf_node_degree <= MAX_LEAF_DEGREE);
-    assert(0 < split_thres_r && split_thres_r <=100);
-    assert(0 < merge_thres_r && merge_thres_r <= 100);
-    assert(0 < distri_r && distri_r <= 100);
+    assert(0 < lb_meta.split_thres_r && lb_meta.split_thres_r <=100);
+    assert(0 < lb_meta.merge_thres_r && lb_meta.merge_thres_r <= 100);
+    assert(0 < lb_meta.distri_r && lb_meta.distri_r <= 100);
     assert(lb_meta.load_tree >= 0);
     assert(work_meta.ratio_add + work_meta.ratio_remove + work_meta.ratio_update + work_meta.ratio_search + work_meta.ratio_scan == 100);
 
@@ -491,9 +491,10 @@ void lb_tree_print(single_thread_data_t *p_single_data, rlu_multi_thread_data_t 
 // TEST_THREADS
 /////////////////////////////////////////////////////////
 void* single_test(void *arg) {
+/*    
     single_thread_data_t* p_data = (single_thread_data_t *)arg;
     srand(p_data->seed);
-    int basic_op_result, sm_op_result, basic_command, start, end, temp;
+    int basic_op_result, sm_op_result, basic_command, start, end;
     item_t item, update_item;
 
     p_data->local_cycle = 0;
@@ -505,7 +506,8 @@ void* single_test(void *arg) {
 
         basic_command = op_make();
         item = item_make();
-
+    }
+   
 restart:
         if (p_data->log_option) {
             p_data->p_log[p_data->local_cycle].so_log.operator = basic_command;
@@ -549,7 +551,7 @@ restart:
                 p_data->nb_try_scan++;
                 start = rand() % (ITEM_MAX_KEY - ITEM_MIN_KEY) + ITEM_MIN_KEY;  
                 end = rand() % (ITEM_MAX_KEY - start) + (start + 1);
-                basic_op_result = lb_tree_range_scan(NULL, p_data, start, end, 2);
+                basic_op_result = lb_tree_range_scan(p_data, NULL, start, end, 2);
                 if (basic_op_result > 0) {
                     p_data->nb_scan++;
                 }
@@ -557,7 +559,7 @@ restart:
         }
 
         if (basic_op_result < -1) {goto restart;}
- /*       
+ 
         while (1) {
             temp = p_data->p_smo->operator;
             switch(temp) {
@@ -581,7 +583,7 @@ restart:
                 break;
             }
         }
-*/
+
         if (p_data->log_option) {
             if (basic_command == 3) {p_data->p_log[p_data->local_cycle].so_log.update_input = update_item;}
             if (basic_command == 5) {
@@ -593,6 +595,7 @@ restart:
         }
         p_data->local_cycle++;
     }
+*/
     return NULL;
 }
 
@@ -603,6 +606,7 @@ void* rlu_test(void *arg) {
     item_t item, update_item;
 
     p_data->local_cycle = 0;
+
     barrier_cross(p_data->p_barrier);
 
     while(stop == 0){
@@ -612,7 +616,6 @@ void* rlu_test(void *arg) {
         basic_command = op_make();
         item = item_make();
         
-restart:
         if (p_data->log_option) {
             p_data->p_log[p_data->local_cycle].start_g_cycle = temp;
             p_data->p_log[p_data->local_cycle].so_log.operator = basic_command;
@@ -686,10 +689,6 @@ restart:
         
         if (p_data->log_option) {
             if (basic_command == 3) {p_data->p_log[p_data->local_cycle].so_log.update_input = update_item;}
-            if (basic_command == 5) {
-                p_data->p_log[p_data->local_cycle].so_log.start_key = start;
-                p_data->p_log[p_data->local_cycle].so_log.end_key = end;
-            }
             p_data->p_log[p_data->local_cycle].so_log.result = basic_op_result;
             p_data->p_log[p_data->local_cycle].end_g_cycle = 1;
             p_data->p_log[p_data->local_cycle].smo_log.result = sm_op_result;
@@ -714,12 +713,7 @@ void trigger_print() {
 }
 
 void segfault_handler(int sig) {
-    void *array[10];
-    size_t size;
-
-    size = backtrace(array, 10);
     fprintf(stderr, "Error: signal %d:\n", sig);
-    backtrace_symbols_fd(array, size, STDERR_FILENO);
 
     trigger_print();
 
@@ -737,7 +731,6 @@ void forced_termination_handler (int sig) {
 // MAIN
 /////////////////////////////////////////////////////////
 int main(int argc, char **argv) {
-    int i, j, k, c, size;
 // BENCHMARK SET
     printf("\n\n==========      START BENCHMARK        ==========\n\n");
 
@@ -828,7 +821,7 @@ int main(int argc, char **argv) {
     
     local_thread_print(p_single_data, p_rlu_data, 2);
 
-    lb_tree_print(p_single_data, p_rlu_data, 10, 5, 2);
+    lb_tree_print(p_single_data, p_rlu_data, 10, -1, 2);
 
     measurements_print();
 
