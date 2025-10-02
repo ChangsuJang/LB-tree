@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "stdlib.h": "c",
+        "stddef.h": "c",
+        "stdatomic.h": "c",
+        "stdio.h": "c",
+        "mvrlu.h": "c",
+        "pre_define.h": "c",
+        "lb_tree.h": "c",
+        "numa-config.h": "c"
+    }
+}

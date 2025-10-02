@@ -1,0 +1,25 @@
+{ 
+    "zipf":[ 
+        { 
+            "alg_type" : ["rlu"],
+            "index_type": ["lbtree"],
+            "num_threads" : [1],
+            "runs_per_test": 1,
+            "zipf_dist_val" : 0.0,
+            "seed" : 1,
+            "duration" : 1000,
+            "range_size" : 3000,
+            "initial_size" : 55,
+            "add_ratio" : 20,
+            "remove_ratio" : 0,
+            "search_ratio" : 70,
+            "scan_ratio" : 10,
+            "inner_degree" : 20,
+            "leaf_degree" : 10,
+            "split_threshold_ratio" : 75,
+            "merge_threshold_ratio" : 25,
+            "distribution_ratio" : 50,
+            "rlu_max_ws" : 1
+        }
+    ]
+}
