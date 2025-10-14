@@ -66,7 +66,7 @@ typedef struct barrier {
 
 typedef struct workloads_meta {
 	int duration;
-	int range;
+	int key_range;
 	int init_size;
 	int zipf;
 	double zipf_dist_val;
@@ -85,7 +85,7 @@ typedef struct results_meta {
 	unsigned long nb_search;
 	unsigned long nb_scan;
 
-	unsigned long diff;
+	long diff;
 	unsigned long size;
 }results_meta_t;
 

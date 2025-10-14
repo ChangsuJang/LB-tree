@@ -1,0 +1,76 @@
+/vm
+/bin/zipf/*-rlu
+/bin/zipf/*-mvrlu
+/bin/zipf/*-mvrlu-ordo
+/bin/zipf/*-mvrlu-gclk
+/bin/zipf/bench-*
+/bin/zipf/benchmark_*
+*~
+tags
+cscope.*
+perf.data*
+*.log
+*#
+.#*
+exp/
+__*.txt
+*.pyc
+
+src/bench-rlu
+src/bench-rlu-ordo
+src/bench-mvrlu
+src/bench-mvrlu-ordo
+src/ut-set
+
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf

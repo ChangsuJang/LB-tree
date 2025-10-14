@@ -1,1 +1,0 @@
-[rlu]/home/jcs/LB_tree/lb+tree_mvrlu/bin/zipf/bench-lbtree-rlu --num_threads 4 --zipf_dist_val 1.000000 --seed 1 --duration 1000 --range_size 3000 --initial_size 500 --add_ratio 10 --remove_ratio 10 --search_ratio 70 --scan_ratio 10 --inner_degree 10 --leaf_degree 10 --split_threshold_ratio 75 --merge_threshold_ratio 25 --distribution_ratio 50 --rlu_max_ws 1

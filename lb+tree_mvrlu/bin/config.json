@@ -1,15 +1,15 @@
 { 
     "zipf":[ 
         { 
-            "alg_type" : ["rlu"],
+            "alg_type" : ["mvrlu_ordo"],
             "index_type": ["lbtree"],
             "num_threads" : [1],
             "runs_per_test": 1,
             "zipf_dist_val" : 0.0,
             "seed" : 1,
-            "duration" : 1000,
-            "range_size" : 3000,
-            "initial_size" : 55,
+            "duration" : 2000,
+            "key_range" : 100000,
+            "initial_size" : 10,
             "add_ratio" : 20,
             "remove_ratio" : 0,
             "search_ratio" : 70,

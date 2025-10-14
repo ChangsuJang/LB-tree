@@ -4,7 +4,6 @@
 #include "lb_tree.h"
 #include "pre_define.h"
 
-
 #include "numa-config.h"
 #include "zipf/zipf.h"
 
@@ -13,8 +12,8 @@
 ////////////////////////////////////////////////////////////////
 // WORK LOADS				//
 #define DEFAULT_DURATION			10000
-#define DEFAULT_RANGE               MAX_KEY
-#define DEFAULT_INIT_SIZE           0
+#define DEFAULT_KEY_RANGE           MAX_KEY
+#define DEFAULT_INIT_SIZE           500
 #define DEFAULT_ZIPF                0
 #define DEFAULT_ZIPF_DIST_VAL       0.0
 
@@ -168,7 +167,7 @@ void options_meta_set(int argc, char **argv) {
 
     struct option long_options[] = {
         {"duration",                        required_argument, NULL, 0},
-        {"range_size",                      required_argument, NULL, 0},
+        {"key_range",                       required_argument, NULL, 0},
         {"initial_size",                    required_argument, NULL, 0},
         {"zipf_dist_val",                   required_argument, NULL, 0},
         {"add_ratio",                       required_argument, NULL, 0},
@@ -188,14 +187,13 @@ void options_meta_set(int argc, char **argv) {
 
     // DEFALUT SET
     work_meta.duration = DEFAULT_DURATION;
-    work_meta.range = DEFAULT_RANGE;
+    work_meta.key_range = DEFAULT_KEY_RANGE;
     work_meta.init_size = DEFAULT_INIT_SIZE;
     work_meta.zipf_dist_val = DEFAULT_ZIPF_DIST_VAL;
 	work_meta.ratio_add = DEFAULT_ADD_RATIO;
 	work_meta.ratio_remove = DEFAULT_REMOVE_RATIO;
 	work_meta.ratio_search = DEFAULT_SEARCH_RATIO;
 	work_meta.ratio_scan= DEFAULT_SCAN_RATIO;
-    work_meta.range = DEFAULT_RANGE;
     work_meta.seed = DEFAULT_SEED;
 
     index_meta.inner_node_degree = DEFAULT_INNER_DEGREE;
@@ -215,7 +213,7 @@ void options_meta_set(int argc, char **argv) {
             const char *arg = optarg ? optarg : "";
 
             if(strcmp(name, "duration") == 0)                       work_meta.duration = atoi(arg);
-            else if(strcmp(name, "range_size") == 0)                work_meta.range = atoi(arg);
+            else if(strcmp(name, "key_range") == 0)                 work_meta.key_range = atoi(arg);
             else if (strcmp(name, "initial_size") == 0)             work_meta.init_size = atoi(arg);
             else if (strcmp(name, "zipf") == 0)                     work_meta.zipf = atoi(arg);
             else if (strcmp(name, "zipf_dist_val") == 0)            work_meta.zipf_dist_val = strtod(arg, NULL);
@@ -236,7 +234,7 @@ void options_meta_set(int argc, char **argv) {
     if (work_meta.zipf_dist_val > 0) { work_meta.zipf = 1;}
 
     assert(work_meta.duration >= 0);
-    assert(work_meta.range > INT_MAX);
+    assert(work_meta.key_range < work_meta.init_size || work_meta.key_range > MAX_KEY);
     
     assert(index_meta.inner_node_degree >= 3 && index_meta.inner_node_degree <= MAX_INNER_DEGREE);
     assert(index_meta.leaf_node_degree >= 3 && index_meta.leaf_node_degree <= MAX_LEAF_DEGREE);
@@ -253,7 +251,8 @@ void options_meta_set(int argc, char **argv) {
 void options_meta_print() {
     printf("----------          WORK LOAD       ----------\n");
     printf("Duration                : %d Milliseconds\n", work_meta.duration);
-    printf("Range size              : %d\n", work_meta.range);
+    printf("Key range               : %d\n", work_meta.key_range);
+    printf("Init size               : %d\n", work_meta.init_size);
     printf("Zipf val                : %lf\n", work_meta.zipf_dist_val);
     printf("Ratio of add            : %d\n", work_meta.ratio_add);
     printf("Ratio of remove         : %d\n", work_meta.ratio_remove);
@@ -419,7 +418,7 @@ void local_rlu_thread_print(multi_thread_data_t *p_data, int option) {
     printf("Total REMOVE            : %lu\n", results_meta.nb_remove);
     printf("Total SEARCH            : %lu\n", results_meta.nb_search);
     printf("Total SCAN              : %lu\n", results_meta.nb_scan);
-    printf("Total Modified Size     : %lu\n", results_meta.diff);
+    printf("Total Modified Size     : %ld\n", results_meta.diff);
     printf("Index Size              : %lu\n", results_meta.size);
 }
 
@@ -738,9 +737,9 @@ int lb_tree_init(multi_thread_data_t *p_data) {
     } else { return -1;}
 
 #if defined(IS_RLU) && defined(IS_LBTREE)
-    while (init_size < 52) {
+    while (init_size < work_meta.init_size) {
         if (p_data->p_smo->operator == 0) {
-            key = rand_in_range(MIN_KEY, work_meta.range, p_data->seed) + 1;
+            key = rand_in_range(MIN_KEY, work_meta.key_range, p_data->seed) + 1;
             if (lb_tree_add(p_data, key, 2) == SUCCESS) {init_size ++;}
         } else {
             temp = p_data->p_smo->operator;
@@ -752,13 +751,6 @@ int lb_tree_init(multi_thread_data_t *p_data) {
             temp = 0;
         }
     }
-
-    while (init_size < work_meta.init_size)  {
-        key = rand_in_range(MIN_KEY, work_meta.range, p_data->seed) + 1;
-        printf("~~~~~~~[%d] key is %d~~~~~~~~~~~~~\n", init_size, key);
-        init_size ++;
-    }
-
 #else
 #endif
     printf("[%ld] Adding done\n", p_data->uniq_id);
@@ -768,6 +760,8 @@ int lb_tree_init(multi_thread_data_t *p_data) {
 // PRINT OPERATION
 /////////////////////////////////////////////////////////
 void local_thread_print(multi_thread_data_t *p_rlu, int option) {
+    printf("---------- BENCHMARK RESULTS ----------\n");
+    printf("Execution Time          : %d msec", results_meta.duration);
     #ifdef IS_RLU
         // local_rlu_thread_log_print (p_rlu, option);
         local_rlu_thread_print(p_rlu, option);
@@ -775,6 +769,7 @@ void local_thread_print(multi_thread_data_t *p_rlu, int option) {
         printf("ERROR: benchmark not defined!\n");
         abort();
     #endif  //IS_RLU
+    printf("\n\n");
 }
     
 void lb_tree_print(multi_thread_data_t *p_rlu_data, int start_lv, int end_lv, int option) {
@@ -794,7 +789,7 @@ void* rlu_test(void *arg) {
 
     struct zipf_state zs;
 
-    zipf_init(&zs, work_meta.range, work_meta.zipf, rand_in_range(MIN_KEY, work_meta.range, p_data->seed)+1);
+    zipf_init(&zs, work_meta.key_range, work_meta.zipf, rand_in_range(MIN_KEY, work_meta.key_range, p_data->seed)+1);
 
 // ===== 측정 대상 코드 시작 =====
     lb_tree_init(p_data);
@@ -805,65 +800,65 @@ void* rlu_test(void *arg) {
     barrier_cross(p_data->p_barrier);
     gettimeofday(&start_time, NULL);
 
-    // while(stop == 0) {
+    while(stop == 0) {
          
-    //     basic_command = op_make(1);
+        basic_command = op_make(1);
 
-    //     basic_op_result = 0;
-    //     sm_op_result = 0;
+        basic_op_result = 0;
+        sm_op_result = 0;
 
-    //     if (p_data->zipf) {
-    //         key = zipf_next(&zs);
-    //     } else {
-    //         key = rand_in_range(MIN_KEY, work_meta.range, p_data->seed)+1;
-    //     }
+        if (p_data->zipf) {
+            key = zipf_next(&zs);
+        } else {
+            key = rand_in_range(MIN_KEY, work_meta.key_range, p_data->seed)+1;
+        }
 
-    //     if (p_data->p_smo->operator == 0) {
-    //         switch(basic_command) {
-    //             case 1:
-    //                 basic_op_result = lb_tree_add(p_data, key, 2);
-    //                 if (basic_op_result > 0) {
-    //                     p_data->nb_add++;
-    //                     p_data->diff++;
-    //                 }
-    //                 break;
-    //             case 2:
-    //                 basic_op_result = lb_tree_remove(p_data, key, 2);
-    //                 if (basic_op_result > 0) {
-    //                     p_data->nb_remove++;
-    //                     p_data->diff--;
-    //                 }
-    //                 break;
-    //             case 3:
-    //                basic_op_result = lb_tree_search(p_data, key, 2);
-    //                if (basic_op_result > 0) {
-    //                    p_data->nb_search++;
-    //                }
-    //                break;
-    //             case 4:
-    //                 basic_op_result = lb_tree_range_scan(p_data, key, 100, 2);
-    //                 break;
-    //         }
-    //     } else {
-    //         temp = p_data->p_smo->operator;
-    //         if (temp > 0) {
-    //             sm_op_result = lb_tree_split(p_data, 2);
-    //             if (sm_op_result) {
-    //                 if (temp == 10) {p_data->nb_header_split++;}
-    //                 else {p_data->nb_inner_split++;}
-    //             }
-    //         } else {
-    //             sm_op_result = lb_tree_merge(p_data, 2);
-    //             if (sm_op_result) {
-    //                 if (temp == -10) {p_data->nb_header_merge++;}
-    //                 else {p_data->nb_inner_merge++;}
-    //             }
-    //         }
-    //         if (temp == p_data->p_smo->operator) {
-    //             memset(p_data->p_smo, 0, sizeof(smo_t));
-    //         }
-    //     }
-    // }
+        if (p_data->p_smo->operator == 0) {
+            switch(basic_command) {
+                case 1:
+                    basic_op_result = lb_tree_add(p_data, key, 2);
+                    if (basic_op_result > 0) {
+                        p_data->nb_add++;
+                        p_data->diff++;
+                    }
+                    break;
+                case 2:
+                    // basic_op_result = lb_tree_remove(p_data, key, 2);
+                    // if (basic_op_result > 0) {
+                        // p_data->nb_remove++;
+                        // p_data->diff--;
+                    // }
+                    // break;
+                case 3:
+                   basic_op_result = lb_tree_search(p_data, key, 2);
+                   if (basic_op_result > 0) {
+                       p_data->nb_search++;
+                   }
+                   break;
+                case 4:
+                    basic_op_result = lb_tree_range_scan(p_data, key, 100, 2);
+                    break;
+            }
+        } else {
+            temp = p_data->p_smo->operator;
+            if (temp > 0) {
+                sm_op_result = lb_tree_split(p_data, 2);
+                if (sm_op_result) {
+                    if (temp == 10) {p_data->nb_header_split++;}
+                    else {p_data->nb_inner_split++;}
+                }
+            } else {
+                sm_op_result = lb_tree_merge(p_data, 2);
+                if (sm_op_result) {
+                    if (temp == -10) {p_data->nb_header_merge++;}
+                    else {p_data->nb_inner_merge++;}
+                }
+            }
+            if (temp == p_data->p_smo->operator) {
+                memset(p_data->p_smo, 0, sizeof(smo_t));
+            }
+        }
+    }
     return NULL;
 }
 
@@ -974,12 +969,10 @@ int main(int argc, char **argv) {
     local_thread_finish(&p_rlu_data);
 
     printf("\n\n==========      PRINT MEASUREMENTS        ==========\n\n"); 
-
-    printf("root level %d\n",p_root->p_inner->level);
     
     local_thread_print(p_rlu_data, 2);
 
-    lb_tree_print(p_rlu_data, 10, 0, 2);
+    // lb_tree_print(p_rlu_data, 10, -1, 2);
 
     local_free_thread(&p_rlu_thread, &p_rlu_data);
     free_rand(p_thread_seed);

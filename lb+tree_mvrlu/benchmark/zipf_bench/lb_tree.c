@@ -33,7 +33,7 @@ inline int key_compare(int src, int obj) {
 ////////////////////////////////////////////////////////////////
 // PRINT OPERATION
 ////////////////////////////////////////////////////////////////
-// LEAF
+// `
 void rlu_leaf_print(multi_thread_data_t* p_data, leaf_node_t *p_leaf, int option) {
     if (!p_data || !p_leaf) {
         perror("Invalid parameter for rlu_leaf_print");
@@ -330,11 +330,11 @@ restart:
         RLU_ASSIGN_PTR(p_self, &(p_new->p_next), p_next);
         RLU_ASSIGN_PTR(p_self, &(p_curr->p_next), p_new);
 
-        if (p_header->count > split_thres && p_header->state == FREE) {
-            p_header->state = SPLIT_REGIST;
-            RLU_ASSIGN_PTR(p_self, &(p_data->p_smo->p_master_header), p_header);
-            p_data->p_smo->operator = 10;
-        }
+        // if (p_header->count > split_thres && p_header->state == FREE) {
+            // p_header->state = SPLIT_REGIST;
+            // RLU_ASSIGN_PTR(p_self, &(p_data->p_smo->p_master_header), p_header);
+            // p_data->p_smo->operator = 10;
+        // }
 
         RLU_READER_UNLOCK(p_self);
         return SUCCESS;
@@ -399,11 +399,11 @@ restart:
 
         p_header->count--;
 
-        if (p_header->count < merge_thres && p_header->state == FREE) {
-            p_header->state = MERGE_REGIST;
-            RLU_ASSIGN_PTR(p_self, &(p_data->p_smo->p_master_header), p_header);
-            p_data->p_smo->operator = -10;
-        }
+        // if (p_header->count < merge_thres && p_header->state == FREE) {
+            // p_header->state = MERGE_REGIST;
+            // RLU_ASSIGN_PTR(p_self, &(p_data->p_smo->p_master_header), p_header);
+            // p_data->p_smo->operator = -10;
+        // }
 
         RLU_READER_UNLOCK(p_self);
         return SUCCESS;
