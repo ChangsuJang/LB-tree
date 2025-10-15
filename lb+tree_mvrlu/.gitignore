@@ -1,11 +1,3 @@
-/vm
-/bin/zipf/*-rlu
-/bin/zipf/*-mvrlu
-/bin/zipf/*-mvrlu-ordo
-/bin/zipf/*-mvrlu-gclk
-/bin/zipf/bench-*
-/bin/zipf/benchmark_*
-*~
 tags
 cscope.*
 perf.data*

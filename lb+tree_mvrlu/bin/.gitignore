@@ -1,6 +1,6 @@
-./zipf/*-rlu
-./zipf/*-mvrlu
-./zipf/*-mvrlu-ordo
-./zipf/*-mvrlu-gclk
-./zipf/bench-*
-./zipf/benchmark_*
+/zipf/*-rlu
+/zipf/*-mvrlu
+/zipf/*-mvrlu-ordo
+/zipf/*-mvrlu-gclk
+/zipf/bench-*
+/zipf/benchmark_*
