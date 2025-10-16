@@ -20,8 +20,6 @@ from run_tests import execute_lbtree
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 LBTREE_SCRIPT = os.path.join(SCRIPT_DIR, "plot_scripts", "lbtree")
-HLIST_SCRIPT = os.path.join(SCRIPT_DIR, "plot_scripts", "hlist")
-RESULTS_DIR  = os.path.join(SCRIPT_DIR, "..", "results")
 
 def parseresults(log_file, plot_data, alg_type, duration, data_file):
     with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
@@ -84,9 +82,6 @@ if __name__ == '__main__':
 
 #Create result directory
     config_path = os.path.join(SCRIPT_DIR, args.config)
-    result_dir = os.path.join(RESULTS_DIR, args.dest)
-    os.makedirs(result_dir, exist_ok=True)
-
 
 #Make benches
     #if opts.plot == False:
@@ -95,36 +90,39 @@ if __name__ == '__main__':
     #Read config files
 
     with open(config_path, 'r', encoding='utf-8') as json_data_file:
-        bench_type = json.load(json_data_file)
+        bench_list = json.load(json_data_file)
 
-    for bench_data in bench_type:
-        update_rate = int(bench_type[bench_data][0]["add_ratio"]) + int(bench_type[bench_data][0]["remove_ratio"])
-        result_dir = os.path.join()
+    for bench_data in bench_list:
+        update_rate = int(bench_list[bench_data][0]["add_ratio"]) + int(bench_list[bench_data][0]["remove_ratio"])
+        index_type_list = bench_list[bench_data][0]["index_type"]
+        alg_type_list = bench_list[bench_data][0]["alg_type"]
+
+        for index_type in index_type_list:
+            for alg_type in alg_type_list:
+                result_dir = os.path.join(SCRIPT_DIR, 'results', bench_data, index_type, alg_type, f'u{update_rate}')
+                os.makedirs(result_dir, exist_ok=True)
     
-        for update_rate in data[test][0]["update-rate"]:
-            final_dir = result_dir + test + "/u" + str(update_rate) + "/";
+                plot_data = {}
+                data_file_path = os.path.join(result_dir, "plot_data.dat")
+                out_file_path = os.path.join(result_dir, "__result.txt")
+                out_file_name = os.path.join(result_dir, f"{alg_type}_{index_type}_{update_rate}.txt")
 
-            try:
-                os.stat(final_dir)
-            except:
-                os.makedirs(final_dir)
-
-            plot_data = {}
-            data_file = open(final_dir + "plot_data.dat", "w+")
-
-            for alg_type in data[test][0]["alg-type"]:
-
-                for index_type in data[test][0]["index-type"]:
-                    out_file = final_dir + "__" + alg_type + "_" + index_type + "_" + str(data[test][0]["initial-size"]) + "_u" + str(update_rate) + ".txt"
-
-                    if opts.plot == False:
-
-                        if index_type == "lbtree":
-                            execute_lbtree( alg_type, data[test][0]["runs-per-test"], data[test][0]["duration"], data[test][0]["distribution"], data[test][0]["inner-degree"], data[test][0]["initial-size"], data[test][0]["leaf-degree"], \
-                                            data[test][0]["num-threads"], data[test][0]["merge-threshold"], data[test][0]["range"], data[test][0]["rlu-max-ws"], data[test][0]["seed"], data[test][0]["split-threshold"], update_rate, data[test][0]["zipf-dist-val"], out_file)
+                if index_type == "lbtree":
+                    execute_lbtree(
+                        bench_data, alg_type, index_type,                       bench_list[bench_data][0]["num_threads"],
+                        bench_list[bench_data][0]["runs_per_test"],             bench_list[bench_data][0]["zipf_dist_val"],
+                        bench_list[bench_data][0]["seed"],                      bench_list[bench_data][0]["duration"],
+                        bench_list[bench_data][0]["key_range"],                 bench_list[bench_data][0]["initial_size"],
+                        bench_list[bench_data][0]["add_ratio"],                 bench_list[bench_data][0]["remove_ratio"],
+                        bench_list[bench_data][0]["search_ratio"],              bench_list[bench_data][0]["scan_ratio"],
+                        bench_list[bench_data][0]["inner_degree"],              bench_list[bench_data][0]["leaf_degree"],
+                        bench_list[bench_data][0]["split_threshold_ratio"],     bench_list[bench_data][0]["merge_threshold_ratio"],
+                        bench_list[bench_data][0]["distribution_ratio"],        bench_list[bench_data][0]["rlu_max_ws"],
+                        out_file_path
+                    )
 # 
-                parseresults(out_file, plot_data, alg_type, \
-                        data[test][0]["duration"], data_file)
-                
-            plotgraph(plot_data, data[test][0]["num-threads"], update_rate, data[test][0]["index-type"], data[test][0]["initial-size"], 'tot_ops', final_dir)
-            plotgraph(plot_data, data[test][0]["num-threads"], update_rate, data[test][0]["index-type"], data[test][0]["initial-size"], 'abrt_ratio', final_dir)
+                # parseresults(out_file, plot_data, alg_type, \
+                        # data[test][0]["duration"], data_file)
+                # 
+            # plotgraph(plot_data, data[test][0]["num-threads"], update_rate, data[test][0]["index-type"], data[test][0]["initial-size"], 'tot_ops', final_dir)
+            # plotgraph(plot_data, data[test][0]["num-threads"], update_rate, data[test][0]["index-type"], data[test][0]["initial-size"], 'abrt_ratio', final_dir)

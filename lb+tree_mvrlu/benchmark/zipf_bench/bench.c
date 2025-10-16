@@ -823,12 +823,12 @@ void* rlu_test(void *arg) {
                     }
                     break;
                 case 2:
-                    // basic_op_result = lb_tree_remove(p_data, key, 2);
-                    // if (basic_op_result > 0) {
-                        // p_data->nb_remove++;
-                        // p_data->diff--;
-                    // }
-                    // break;
+                    basic_op_result = lb_tree_remove(p_data, key, 2);
+                    if (basic_op_result > 0) {
+                        p_data->nb_remove++;
+                        p_data->diff--;
+                    }
+                    break;
                 case 3:
                    basic_op_result = lb_tree_search(p_data, key, 2);
                    if (basic_op_result > 0) {

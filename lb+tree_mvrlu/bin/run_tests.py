@@ -21,7 +21,7 @@ W_OUTPUT_FILENAME = '__w_check.txt'
 
 CMD_PREFIX_PERF = "perf stat -d -o %s" % (PERF_FILE,)
 
-LBTREE_SCRIPT = 'plot_scripts/lbtree'
+LBTREE_SCRIPT = os.path.join(SCRIPT_DIR, "plot_scripts", "lbtree")
 
 CMD_PREFIX_LIBS = 'export LD_PRELOAD=\\"/usr/lib64/libtcmalloc_minimal.so.4\\"'
 #CMD_PREFIX_LIBS = 'export LD_PRELOAD=\\"$LD_PRELOAD\\"'
@@ -305,7 +305,7 @@ def execute_lbtree(
 
 		if index_type == "lbtree":
 			base = os.path.join(SCRIPT_DIR, BENCH_CMD_BASE[bench_type], LBTREE_CMD_BASE[alg_type])
-
+	
 		with open(output_filename, 'w', encoding='utf-8') as f_out:
 
 			for num_threads in num_threads_list:
@@ -388,7 +388,7 @@ if '__main__' == __name__:
 
 
 	# output layout
-	parser.add_argument('--outdir', default='./results', help='Root output directory')
+	parser.add_argument('--outdir', default='results', help='Root output directory')
 	parser.add_argument('--output_filename', default='__result.txt', help='Output file name')
 
 
@@ -411,7 +411,7 @@ if '__main__' == __name__:
 
 	for index_type in opts.index_type_list:
 		for alg_type in opts.alg_type_list:
-			result_dir = os.path.join(opts.outdir, 'zipf', str(index_type), str(alg_type), f'u{update_rate}')
+			result_dir = os.path.join(SCRIPT_DIR, opts.outdir, 'zipf', str(index_type), str(alg_type), f'u{update_rate}')
 			os.makedirs(result_dir, exist_ok=True)
 
 			try:
@@ -423,7 +423,7 @@ if '__main__' == __name__:
 				pass
 
 			output_path = os.path.join(result_dir, opts.output_filename)
-			
+
 			execute_lbtree(
 				'zipf',
 				index_type = index_type,

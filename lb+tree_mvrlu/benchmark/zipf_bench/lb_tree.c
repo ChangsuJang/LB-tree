@@ -330,11 +330,11 @@ restart:
         RLU_ASSIGN_PTR(p_self, &(p_new->p_next), p_next);
         RLU_ASSIGN_PTR(p_self, &(p_curr->p_next), p_new);
 
-        // if (p_header->count > split_thres && p_header->state == FREE) {
-            // p_header->state = SPLIT_REGIST;
-            // RLU_ASSIGN_PTR(p_self, &(p_data->p_smo->p_master_header), p_header);
-            // p_data->p_smo->operator = 10;
-        // }
+        if (p_header->count > split_thres && p_header->state == FREE) {
+            p_header->state = SPLIT_REGIST;
+            RLU_ASSIGN_PTR(p_self, &(p_data->p_smo->p_master_header), p_header);
+            p_data->p_smo->operator = 10;
+        }
 
         RLU_READER_UNLOCK(p_self);
         return SUCCESS;
@@ -388,7 +388,9 @@ restart:
     if (result) {
         p_next = (leaf_node_t *)RLU_DEREF(p_self, (p_curr->p_next));
 
-        if (!RLU_TRY_LOCK(p_self, &p_header) || !RLU_TRY_LOCK(p_self, &p_prev) || !RLU_TRY_LOCK(p_self, &p_curr)) {
+        if (!RLU_TRY_LOCK(p_self, &p_prev) || !RLU_TRY_LOCK_CONST(p_self, p_curr))
+
+        if (!RLU_TRY_LOCK(p_self, &p_header) || !RLU_TRY_LOCK(p_self, &p_prev) || !RLU_TRY_LOCK_CONST(p_self, p_curr)) {
             RLU_ABORT(p_self);
             goto restart;
         }
