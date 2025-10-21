@@ -33,7 +33,7 @@ inline int key_compare(int src, int obj) {
 ////////////////////////////////////////////////////////////////
 // PRINT OPERATION
 ////////////////////////////////////////////////////////////////
-// `
+// LEAF
 void rlu_leaf_print(multi_thread_data_t* p_data, leaf_node_t *p_leaf, int option) {
     if (!p_data || !p_leaf) {
         perror("Invalid parameter for rlu_leaf_print");
@@ -313,11 +313,9 @@ restart:
             goto restart;
         }
 
-        if (p_curr->type == NORMAL_TYPE) {
-            if (!RLU_TRY_LOCK(p_self, &p_header)) {
-                RLU_ABORT(p_self);
-                goto restart;
-            }
+        if (p_curr->type == NORMAL_TYPE && !RLU_TRY_LOCK(p_self, &p_header)) {
+            RLU_ABORT(p_self);
+            goto restart;
             p_header->count ++;
         } else {
             p_curr->count ++;
@@ -388,76 +386,28 @@ restart:
     if (result) {
         p_next = (leaf_node_t *)RLU_DEREF(p_self, (p_curr->p_next));
 
-        if (!RLU_TRY_LOCK(p_self, &p_prev) || !RLU_TRY_LOCK_CONST(p_self, p_curr))
-
-        if (!RLU_TRY_LOCK(p_self, &p_header) || !RLU_TRY_LOCK(p_self, &p_prev) || !RLU_TRY_LOCK_CONST(p_self, p_curr)) {
+        if (!RLU_TRY_LOCK(p_self, &p_prev) || !RLU_TRY_LOCK_CONST(p_self, p_curr)) {
             RLU_ABORT(p_self);
             goto restart;
+        }
+
+        if (p_prev->type == NORMAL_TYPE && !RLU_TRY_LOCK(p_self, &p_header)) {
+            RLU_ABORT(p_self);
+            goto restart;
+            p_header->count --;
+        } else {
+            p_prev->count --;
         }
 
         RLU_ASSIGN_PTR (p_self, &(p_prev->p_next), p_next);
 
         rlu_free_leaf(p_self, p_curr);
 
-        p_header->count--;
-
-        // if (p_header->count < merge_thres && p_header->state == FREE) {
-            // p_header->state = MERGE_REGIST;
-            // RLU_ASSIGN_PTR(p_self, &(p_data->p_smo->p_master_header), p_header);
-            // p_data->p_smo->operator = -10;
-        // }
-
-        RLU_READER_UNLOCK(p_self);
-        return SUCCESS;
-    } else {
-        RLU_READER_UNLOCK(p_self);
-        return NOTHING;
-    }
-}
-
-int rlu_leaf_update(multi_thread_data_t *p_data, leaf_node_t *p_header, int input, int update_key, int option) {
-    if (!p_data || !p_header) {return LOST;}
-    
-    int result;
-    leaf_node_t *p_prev, *p_curr;
-    rlu_thread_data_t *p_self = p_data->p_rlu_td;
-
-restart:
-    result = 0;
-    RLU_READER_LOCK(p_self);
-
-    p_prev = (leaf_node_t *)RLU_DEREF(p_self, (p_header));
-    p_curr = (leaf_node_t *)RLU_DEREF(p_self, (p_prev->p_next));
-
-    if (!p_prev) {
-        RLU_READER_UNLOCK(p_self);
-        return LOST;
-    }
-
-    while(1) {
-        result = key_compare(input, p_curr->key);
-
-        if (result == 2) {
-            result = 0;
-            break;
+        if (p_header->count < merge_thres && p_header->state == FREE) {
+            p_header->state = MERGE_REGIST;
+            RLU_ASSIGN_PTR(p_self, &(p_data->p_smo->p_master_header), p_header);
+            p_data->p_smo->operator = -10;
         }
-        
-        if (result == 0 && p_curr->type == 0) { 
-            result = 1;
-            break;
-        }
-        
-        p_prev = p_curr;
-        p_curr = (leaf_node_t *)RLU_DEREF(p_self, (p_prev->p_next));
-    }
-
-    if (result) {
-        if (!RLU_TRY_LOCK(p_self, &p_curr)) {
-            RLU_ABORT(p_self);
-            goto restart;
-        }
-
-        p_curr->key = update_key;
 
         RLU_READER_UNLOCK(p_self);
         return SUCCESS;
@@ -517,7 +467,6 @@ int rlu_inner_entry_search(multi_thread_data_t *p_data, inner_node_t **pp_inner,
         }
     }
 }
-
 
 // FREE
 void rlu_free_inner(rlu_thread_data_t *p_self ,inner_node_t *p_inner) {
@@ -603,7 +552,7 @@ restart:
         return p_parent;
     }
 
-    if(!RLU_TRY_LOCK(p_self, &p_curr_root) || !RLU_TRY_LOCK(p_self, &p_curr)) {
+    if(!RLU_TRY_LOCK(p_self, &p_curr_root) || !RLU_TRY_LOCK_CONST(p_self, p_curr)) {
         RLU_ABORT(p_self);
         goto restart;
     }
@@ -835,45 +784,6 @@ restart:
         printf("LB_TREE_REMOVE\n");
         goto restart;
     }
-
-    return result;
-}
-
-int rlu_lb_tree_update(multi_thread_data_t *p_data, int input, int update_input, int option) {
-    if (!p_data) {
-        perror("Invalid parameter for rlu_lb_tree_update");
-        exit(1);
-    }
-
-    int curr_level, entry_number, result;
-    root_node_t *p_curr_root;
-    inner_node_t *p_inner = NULL;
-    leaf_node_t *p_header = NULL;
-    rlu_thread_data_t *p_self = p_data->p_rlu_td;
-
-restart:
-    RLU_READER_LOCK (p_self);
-
-    p_curr_root = (root_node_t *)RLU_DEREF(p_self, (p_data->p_root));
-    p_inner = (inner_node_t *)RLU_DEREF(p_self, (p_curr_root->p_inner));
-    curr_level = p_inner->level;
-
-    while (curr_level > 0) {
-        entry_number = rlu_inner_entry_search(p_data, &p_inner, input, option);
-        if (curr_level > 1) {
-            p_inner = (inner_node_t *)RLU_DEREF(p_self, (p_inner->entry[entry_number].p_inner_child));
-            curr_level = p_inner->level;
-        }else {
-            p_header = (leaf_node_t *)RLU_DEREF(p_self, (p_inner->entry[entry_number].p_leaf_child));
-            curr_level--;
-        }
-    }
-
-    RLU_READER_UNLOCK (p_self);
-
-    result = rlu_leaf_update(p_data, p_header, input, update_input, option);
-
-    if (result == LOST) {goto restart;}
 
     return result;
 }
@@ -1126,17 +1036,7 @@ restart:
     if (result) {
         p_next = (leaf_node_t *)RLU_DEREF(p_self, (p_curr->p_next));
 
-        if (!RLU_TRY_LOCK(p_self, &p_header)) {
-            RLU_ABORT(p_self);
-            goto restart;
-        }
-
-        if (!RLU_TRY_LOCK(p_self, &p_prev)) {
-            RLU_ABORT(p_self);
-            goto restart;
-        }
-
-        if (!RLU_TRY_LOCK(p_self, &p_curr)) {
+        if (!RLU_TRY_LOCK(p_self, &p_header) || !RLU_TRY_LOCK(p_self, &p_prev) || !RLU_TRY_LOCK_CONST(p_self, p_curr)) {
             RLU_ABORT(p_self);
             goto restart;
         }
@@ -1528,7 +1428,7 @@ restart:
     p_prev = (inner_node_t *)RLU_DEREF(p_self, (p_data->p_smo->p_master_inner));
     p_curr = (inner_node_t *)RLU_DEREF(p_self, (p_data->p_smo->p_slave_inner));
     
-    if (!RLU_TRY_LOCK(p_self, &p_prev) || !RLU_TRY_LOCK(p_self, &p_curr)) {
+    if (!RLU_TRY_LOCK(p_self, &p_prev) || !RLU_TRY_LOCK_CONST(p_self, p_curr)) {
        RLU_ABORT(p_self);
        goto restart;
     }
