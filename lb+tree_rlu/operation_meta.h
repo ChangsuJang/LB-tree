@@ -11,11 +11,11 @@
 // DEFINES
 ////////////////////////////////////////////////////////////////
 
-#define ITEM_MIN_KEY    100
-#define ITEM_MAX_KEY    1000000
+#define ITEM_MIN_KEY    1
+#define ITEM_MAX_KEY    2147483646
 
-#define ITEM_MAX_VALUE  1
-#define ITEM_MIN_VALUE  1000
+#define ITEM_MAX_VALUE  2147483646
+#define ITEM_MIN_VALUE  1
 
 ////////////////////////////////////////////////////////////////
 // TYPES

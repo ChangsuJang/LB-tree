@@ -103,9 +103,7 @@ if __name__ == '__main__':
                 os.makedirs(result_dir, exist_ok=True)
     
                 plot_data = {}
-                data_file_path = os.path.join(result_dir, "plot_data.dat")
-                out_file_path = os.path.join(result_dir, "__result.txt")
-                out_file_name = os.path.join(result_dir, f"{alg_type}_{index_type}_{update_rate}.txt")
+                # data_file_path = os.path.join(result_dir, "plot_data.dat")
 
                 if index_type == "lbtree":
                     execute_lbtree(
@@ -118,7 +116,7 @@ if __name__ == '__main__':
                         bench_list[bench_data][0]["inner_degree"],              bench_list[bench_data][0]["leaf_degree"],
                         bench_list[bench_data][0]["split_threshold_ratio"],     bench_list[bench_data][0]["merge_threshold_ratio"],
                         bench_list[bench_data][0]["distribution_ratio"],        bench_list[bench_data][0]["rlu_max_ws"],
-                        out_file_path
+                        result_dir
                     )
 # 
                 # parseresults(out_file, plot_data, alg_type, \

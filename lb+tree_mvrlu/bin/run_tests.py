@@ -6,7 +6,10 @@ import sys
 import time
 import argparse
 import subprocess
-from typing import Dict, List
+import re
+import csv
+import pandas as pd
+from typing import Any, Callable, Dict, Iterator, List, Optional
 
 IS_NUMA = 1
 IS_2_SOCKET = 0
@@ -16,7 +19,8 @@ TIMEOUT_SEC = 300
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 PERF_FILE = "__perf_output.file"
-TMP_OUTPUT_FILENAME = '___temp.file'
+RESULT_FILE = "__result.csv"
+TMP_OUTPUT_FILENAME = '__temp.file'
 W_OUTPUT_FILENAME = '__w_check.txt'
 
 CMD_PREFIX_PERF = "perf stat -d -o %s" % (PERF_FILE,)
@@ -73,6 +77,35 @@ LBTREE_CMD_PARAMS = (
 	'--distribution_ratio %d '
 	'--rlu_max_ws %f '
 ).strip()
+
+
+RESULT_COLUMNS: List[str] = [
+ 	# Workload
+    "Duration_ms", "Key_range", "Init_size", "Zipf_val",
+    "Ratio_add", "Ratio_remove", "Ratio_search", "Ratio_scan",
+
+    # Index meta
+    "Inner_node_degree", "Leaf_node_degree", "Split_threshold_pct",
+    "Merge_threshold_pct", "Distribution_ratio",
+
+    # Threads meta
+    "Nb_threads", "Rlu_max_ws", "Seed",
+
+    # Results
+    "Execution_time_ms", "Total_ADD", "Total_REMOVE", "Total_SEARCH", "Total_SCAN",
+    # "Total_Modified_Size", "Index_Size",
+	
+    # RLU stats도 원하면 추가
+    # "t_starts","t_finish","t_writers","t_writer_writebacks","t_writeback_q_iters",
+    # "a_writeback_q_iters","t_pure_readers","t_steals","t_aborts","t_sync_requests","t_sync_and_writeback",
+]
+
+
+BENCH_BLOCK_RE = re.compile(
+    r"=+\s*START BENCHMARK\s*=+\s*(?P<body>.*?)=+\s*FINISH BENCHMARK\s*=+",
+    re.DOTALL | re.IGNORECASE
+)
+
 
 
 result_keys = [
@@ -163,38 +196,147 @@ def print_keys(dict_keys: Dict[str, float]) -> None:
 			print(f'{key} {dict_keys.get(key, 0.0):.2f}')
 
 
-def run_test(runs_per_test: int, cmd: str) -> Dict[str, float]:
+def _to_float_or_none(x):
+    try:
+        return float(x)
+    except Exception:
+        return None
 
-	total: Dict[str, float] = {key: 0.0 for key in result_keys}
 
-	if IS_PERF:
-		for key in perf_result_keys:
-			total[key] = 0.0
+def average_parsed_dicts(dict_list):
+    """
+    dict_list: run별 result_parser() 결과(dict)의 리스트
+    반환: 숫자 키만 평균낸 단일 dict
+    """
+    if not dict_list:
+        return {}
+    keys = set()
+    for d in dict_list:
+        keys |= set(d.keys())
 
+    out = {}
+    for k in keys:
+        vals = []
+        for d in dict_list:
+            v = _to_float_or_none(d.get(k))
+            if v is not None:
+                vals.append(v)
+        if vals:
+            out[k] = sum(vals) / len(vals)
+    return out
+
+def _cast_numeric(s: str) -> Any:
+    s2 = s.strip().replace(",", "")
+    parts = s2.split()
+    if parts:
+        s2 = parts[0]
+    try:
+        if "." in s2:
+            return float(s2)
+        return int(s2)
+    except ValueError:
+        return s.strip()
+
+def _find(text: str, pattern: str, cast=_cast_numeric, flags=re.MULTILINE):
+    m = re.search(pattern, text, flags)
+    if not m:
+        return None
+    v = m.group(1)
+    return cast(v) if cast else v
+
+def _extract_keys(block: str) -> Dict[str, Any]:
+    d: Dict[str, Any] = {}
+    # Workload
+    d["Duration_ms"]          = _find(block, r"Duration\s*:\s*([0-9,\.]+)\s*Milliseconds")
+    d["Key_range"]            = _find(block, r"Key range\s*:\s*([0-9,\.]+)")
+    d["Init_size"]            = _find(block, r"Init size\s*:\s*([0-9,\.]+)")
+    d["Zipf_val"]             = _find(block, r"Zipf val\s*:\s*([0-9,\.]+)")
+    d["Ratio_add"]            = _find(block, r"Ratio of add\s*:\s*([0-9,\.]+)")
+    d["Ratio_remove"]         = _find(block, r"Ratio of remove\s*:\s*([0-9,\.]+)")
+    d["Ratio_search"]         = _find(block, r"Ratio of search\s*:\s*([0-9,\.]+)")
+    d["Ratio_scan"]           = _find(block, r"Ratio of scan\s*:\s*([0-9,\.]+)")
+    # Index meta
+    d["Inner_node_degree"]    = _find(block, r"Inner node degree\s*:\s*([0-9,\.]+)")
+    d["Leaf_node_degree"]     = _find(block, r"Leaf node degree\s*:\s*([0-9,\.]+)")
+    d["Split_threshold_pct"]  = _find(block, r"Split threshold ratio\s*:\s*([0-9,\.]+)")
+    d["Merge_threshold_pct"]  = _find(block, r"Merge threshold ratio\s*:\s*([0-9,\.]+)")
+    d["Distribution_ratio"]   = _find(block, r"Distribution ratio\s*:\s*([0-9,\.]+)")
+    # Threads meta
+    d["Nb_threads"]           = _find(block, r"Nb threads\s*:\s*([0-9,\.]+)")
+    d["Rlu_max_ws"]           = _find(block, r"Rlu-max-ws\s*:\s*([0-9,\.]+)")
+    d["Seed"]                 = _find(block, r"seed\s*:\s*([0-9,\.]+)")
+    # Results
+    d["Execution_time_ms"]    = _find(block, r"Execution Time\s*:\s*([0-9,\.]+)\s*msec")
+    d["Total_ADD"]            = _find(block, r"Total ADD\s*:\s*([0-9,\.]+)")
+    d["Total_REMOVE"]         = _find(block, r"Total REMOVE\s*:\s*([0-9,\.]+)")
+    d["Total_SEARCH"]         = _find(block, r"Total SEARCH\s*:\s*([0-9,\.]+)")
+    d["Total_SCAN"]           = _find(block, r"Total SCAN\s*:\s*([0-9,\.]+)")
+    # d["Total_Modified_Size"]  = _find(block, r"Total Modified Size\s*:\s*([0-9,\.]+)")
+    # d["Index_Size"]           = _find(block, r"Index Size\s*:\s*([0-9,\.]+)")
+    return {k: v for k, v in d.items() if v is not None}
+
+def result_parser(output_text: str) -> Dict[str, Any]:
+    last = None
+    for m in BENCH_BLOCK_RE.finditer(output_text):
+        last = m.group("body")
+    if last is None:
+        return {}
+    return _extract_keys(last)
+
+def print_run_results(f_out, result_message: Dict[str, Any]) -> None:
+    # 파일이 비었는지 확인
+    try:
+        empty = (os.fstat(f_out.fileno()).st_size == 0)
+    except Exception:
+        # fileno 없는 핸들일 경우엔 헤더를 쓰지 않음 (원하면 여기서 다른 방식으로 확인)
+        empty = False
+
+    writer = csv.writer(f_out)
+    if empty:
+        writer.writerow(RESULT_COLUMNS)
+
+    row = []
+    for k in RESULT_COLUMNS:
+        v = result_message.get(k, "")
+        # 숫자 캐스팅 시도 (없으면 공백)
+        if v == "" or v is None:
+            row.append("")
+        else:
+            try:
+                row.append(float(v))
+            except Exception:
+                row.append(v)
+    writer.writerow(row)
+    f_out.flush()
+
+def run_test(runs_per_test: int, cmd: str, result_dir) -> Dict[str, float]:
+
+	w_output_file = os.path.join(result_dir, W_OUTPUT_FILENAME)
+	temp_file = os.path.join(result_dir, TMP_OUTPUT_FILENAME)
+
+	parsed_runs: List[Dict[str, Any]] = []
+
+	file_offset = 0
 	i = 0
+
+	print("\n\n")
 
 	while i < runs_per_test:
 		print(f'run {i}')
 
-		if IS_PERF and os.path.exists(PERF_FILE):
-			try: 
-				os.unlink(PERF_FILE)
-			except OSError:
-				pass
-
-		with open(W_OUTPUT_FILENAME, 'a', encoding = 'utf-8', errors='ignore') as wf:
+		with open(w_output_file, 'a', encoding = 'utf-8', errors='ignore') as wf:
 			wf.write(f'\n=== BEFORE RUN {i} ===\n')
-		subprocess.run(['bash', '-lc', f'w >> {W_OUTPUT_FILENAME}'], check = False)
+		subprocess.run(['bash', '-lc', f'w >> {w_output_file}'], check = False)
 
 		full_cmd = f'timeout {TIMEOUT_SEC} bash -lc "{cmd}; echo $? > done"'
 		print(full_cmd)
 
-		with open(TMP_OUTPUT_FILENAME, 'w', encoding= 'utf-8', errors='ignore') as outf:
+		with open(temp_file, 'a', encoding= 'utf-8', errors='ignore') as outf:
 			subprocess.run(full_cmd, shell=True, stdout=outf, stderr=subprocess.STDOUT, check=False)
 		
-		with open(W_OUTPUT_FILENAME, 'a', encoding='utf-8', errors='ignore') as wf:
+		with open(w_output_file, 'a', encoding='utf-8', errors='ignore') as wf:
 			wf.write(f'\n=== AFTER RUN ===\n')
-		subprocess.run(['bash', '-lc', f'w >> {W_OUTPUT_FILENAME}'], check = False)
+		subprocess.run(['bash', '-lc', f'w >> {w_output_file}'], check = False)
 
 		if not os.path.exists('done'):
 			print('no done file (timeout/kill) - retrying...')
@@ -208,10 +350,8 @@ def run_test(runs_per_test: int, cmd: str) -> Dict[str, float]:
 		except ValueError:
 			rc = -1
 		finally:
-			try:
-				os.unlink('done')
-			except OSError:
-				pass
+			try: os.unlink('done')
+			except OSError: pass
 		
 		if rc == 124:
 			print('timeout (124) - retyring this run')
@@ -223,49 +363,33 @@ def run_test(runs_per_test: int, cmd: str) -> Dict[str, float]:
 			time.sleep(5)
 			continue
 
-		with open(TMP_OUTPUT_FILENAME, 'r', encoding='utf-8', errors='ignore') as f:
-			output_data = f.read()
-		try:
-			os.unlink(TMP_OUTPUT_FILENAME)
-		except OSError:
-			pass
+		with open(temp_file, 'r', encoding='utf-8', errors='ignore') as f:
+			f.seek(file_offset)
+			new_chunk = f.read()
+			file_offset = f.tell()
 
-		if IS_PERF and os.path.exists(PERF_FILE):
-			with open(PERF_FILE, 'r', encoding='utf-8', errors='ignore') as pf:
-				output_data += pf.read()
-			try:
-				os.unlink(PERF_FILE)
-			except OSError:
-				pass
+		print("------------------------------------")
+		print(new_chunk)
+		print("------------------------------------")
+
+		result_msg = result_parser(new_chunk)
+
+		if not result_msg:
+			with open (temp_file, 'r', encoding='utf-8', errors='ignore') as f:
+				all_text = f.read()
+			result_msg = result_parser(all_text)
+
+		if not result_msg:
+			print("no benchmark block parsed - retrying this run")
+			time.sleep(2)
+			continue
 		
-		print("------------------------------------")
-		print(output_data)
-		print("------------------------------------")
+		parsed_runs.append(result_msg)
+		i += 1
 
-		# dict_keys = extract_keys(output_data)
-		# print_keys(dict_keys)
-# 
-		# for key, value in dict_keys.items():
-			# total[key] = total.get(key, 0.0) + value
-# 
-		# i += 1
-# 
-		for key in list(total.keys()):
-			total[key] = total[key] / max(runs_per_test, 1)
-			return total
+	avg_dict = average_parsed_dicts(parsed_runs)
 
-
-
-def print_run_results(f_out, rlu_max_ws: int, update_rate: int, num_threads: int, dict_keys: Dict[str, float]) -> None:
-
-	f_out.write(f'\n {rlu_max_ws:.2f} {update_rate:.2f} {num_threads:.2f}')
-
-	for key in result_keys:
-		f_out.write(f' {dict_keys.get(key, 0.0):.2f}')
-	if IS_PERF:
-		for key in perf_result_keys:
-			f_out.write(f' {dict_keys.get(key, 0.0):.2f}')
-	f_out.flush()
+	return avg_dict
 
 def execute_lbtree(
 	bench_type: str,
@@ -288,7 +412,7 @@ def execute_lbtree(
 	merge_threshold_ratio: int,
 	distribution_ratio: int,
 	rlu_max_ws: float,
-	output_filename) -> None:
+	result_dir) -> None:
 		
 		if alg_type in ('mvrlu', 'mvrlu_ordo'):
 			key_name = '                        n_aborts ='
@@ -298,7 +422,17 @@ def execute_lbtree(
 		if key_name not in result_keys:
 			result_keys.append(key_name)
 
-		with open(W_OUTPUT_FILENAME, 'w', encoding='utf-8') as f_w:
+		w_output_file = os.path.join(result_dir, W_OUTPUT_FILENAME)
+		result_file = os.path.join(result_dir, RESULT_FILE)
+		temp_file = os.path.join(result_dir, TMP_OUTPUT_FILENAME)
+
+		with open(w_output_file, 'w', encoding='utf-8') as f_w:
+			f_w.write('')
+		
+		with open(result_file, 'w', encoding='utf-8') as f_w:
+			f_w.write('')
+
+		with open(temp_file, 'w', encoding='utf-8') as f_w:
 			f_w.write('')
 
 		update_rate = add_ratio + remove_ratio
@@ -306,7 +440,7 @@ def execute_lbtree(
 		if index_type == "lbtree":
 			base = os.path.join(SCRIPT_DIR, BENCH_CMD_BASE[bench_type], LBTREE_CMD_BASE[alg_type])
 	
-		with open(output_filename, 'w', encoding='utf-8') as f_out:
+		with open(result_file, 'w', encoding='utf-8') as f_out:
 
 			for num_threads in num_threads_list:
 					params = (LBTREE_CMD_PARAMS % (
@@ -340,20 +474,19 @@ def execute_lbtree(
 					if IS_PERF:
 						cmd = CMD_PREFIX_PERF + cmd
 
+					output_data = run_test(runs_per_test, cmd, result_dir)
 
-					dict_keys = run_test(runs_per_test, cmd)
 					print('complete')
-					print_run_results(f_out, rlu_max_ws, update_rate, num_threads, dict_keys)
 
-			f_out.write('\n')
-			f_out.flush()
+					with open(result_file, 'a', encoding='utf-8', newline='') as f_out:
+						print_run_results(f_out, output_data)
 			
 			try:
 				result_keys.remove(key_name)
 			except ValueError:
 				pass
 
-			print(f'DONE: written output to {output_filename}')
+			print(f'DONE: written output to {result_file}')
 
 
 
@@ -389,8 +522,6 @@ if '__main__' == __name__:
 
 	# output layout
 	parser.add_argument('--outdir', default='results', help='Root output directory')
-	parser.add_argument('--output_filename', default='__result.txt', help='Output file name')
-
 
 	# optional graph
 	parser.add_argument('--generate_graph', type=int, default=0, help='Generate graph (1|0)')
@@ -422,8 +553,6 @@ if '__main__' == __name__:
 			except Exception:
 				pass
 
-			output_path = os.path.join(result_dir, opts.output_filename)
-
 			execute_lbtree(
 				'zipf',
 				index_type = index_type,
@@ -445,7 +574,7 @@ if '__main__' == __name__:
 				merge_threshold_ratio = opts.merge_threshold_ratio,
 				distribution_ratio = opts.distribution_ratio,
 				rlu_max_ws = opts.rlu_max_ws,
-				output_filename = output_path
+				result_dir = result_dir
 			)
 
 
