@@ -3,8 +3,8 @@
         { 
             "alg_type" : ["rlu"],
             "index_type": ["lbtree"],
-            "num_threads" : [1,2,4],
-            "runs_per_test": 3,
+            "num_threads" : [1,2,4,8],
+            "runs_per_test": 1,
             "zipf_dist_val" : 1.0,
             "seed" : 1,
             "duration" : 1000,

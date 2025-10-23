@@ -1,6 +1,3 @@
-# SPDX-FileCopyrightText: Copyright (c) 2018-2019 Virginia Tech
-# SPDX-License-Identifier: Apache-2.0
-
 import os
 import sys
 import time
@@ -9,7 +6,8 @@ import subprocess
 import re
 import csv
 import pandas as pd
-from typing import Any, Callable, Dict, Iterator, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 IS_NUMA = 1
 IS_2_SOCKET = 0
@@ -17,13 +15,11 @@ IS_PERF = 0
 TIMEOUT_SEC = 300
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+FLAMEGRAPH_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "FlameGraph")
 
-PERF_FILE = "__perf_output.file"
 RESULT_FILE = "__result.csv"
 TMP_OUTPUT_FILENAME = '__temp.file'
 W_OUTPUT_FILENAME = '__w_check.txt'
-
-CMD_PREFIX_PERF = "perf stat -d -o %s" % (PERF_FILE,)
 
 LBTREE_SCRIPT = os.path.join(SCRIPT_DIR, "plot_scripts", "lbtree")
 
@@ -158,42 +154,13 @@ def cmd_numa_prefix(threads_num: int) -> str:
 
 	raise ValueError(f'Unsupported num_threads={threads_num}')
 
-
-def extract_data(output_data: str, key_str: str) -> float:
-
-	data = output_data.split(key_str, 1)[1].split()[0].strip()
-
-	if 'nan' in data:
-		return 0.0
-
-	if key_str in ('L1-dcache-load-misses #', 'branch-misses #'):
-		data = data.strip('%')
-
-	return float(data)
-
-
-def extract_keys(output_data: str) -> Dict[str, float]:
-	d: Dict[str, float] = {}
-
-	for key in result_keys:
-		d[key] = extract_data(output_data, key)
-
-	if IS_PERF:
-		for key in perf_result_keys:
-			d[key] = extract_data(output_data, key)
-
-	return d
-
-def print_keys(dict_keys: Dict[str, float]) -> None:
-
-	print('=================================')
-
-	for key in result_keys:
-		print(f'{key} {dict_keys.get(key, 0.0):.2f}')
-
-	if IS_PERF:
-		for key in perf_result_keys:
-			print(f'{key} {dict_keys.get(key, 0.0):.2f}')
+def _hyperlink_formula(base_dir: str, path: Optional[str], label: Optional[str] = None) -> str:
+    if not path:
+        return ""
+    rel_path = os.path.relpath(path, start=base_dir)
+    if not label:
+        label = os.path.basename(path.rstrip("/"))
+    return f'=HYPERLINK("{rel_path}","{label}")'
 
 
 def _to_float_or_none(x):
@@ -283,33 +250,47 @@ def result_parser(output_text: str) -> Dict[str, Any]:
         return {}
     return _extract_keys(last)
 
-def print_run_results(f_out, result_message: Dict[str, Any]) -> None:
-    # 파일이 비었는지 확인
-    try:
-        empty = (os.fstat(f_out.fileno()).st_size == 0)
-    except Exception:
-        # fileno 없는 핸들일 경우엔 헤더를 쓰지 않음 (원하면 여기서 다른 방식으로 확인)
-        empty = False
+def print_run_results(f_out, num_threads: int, perf_dir, result_message: Dict[str, Any]) -> None:
 
-    writer = csv.writer(f_out)
-    if empty:
-        writer.writerow(RESULT_COLUMNS)
+	timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
-    row = []
-    for k in RESULT_COLUMNS:
-        v = result_message.get(k, "")
-        # 숫자 캐스팅 시도 (없으면 공백)
-        if v == "" or v is None:
-            row.append("")
-        else:
-            try:
-                row.append(float(v))
-            except Exception:
-                row.append(v)
-    writer.writerow(row)
-    f_out.flush()
+	try:
+		empty = (os.fstat(f_out.fileno()).st_size == 0)
+	except Exception:
+		empty = False
 
-def run_test(runs_per_test: int, cmd: str, result_dir) -> Dict[str, float]:
+	writer = csv.writer(f_out)
+
+	header = ["Time"] + RESULT_COLUMNS + ["perf_data", "perf_graph"]
+
+	if empty:
+		writer.writerow(header)
+
+	base_dir = os.path.dirname(f_out.name)
+
+	row = [timestamp]
+	for k in RESULT_COLUMNS:
+		v = result_message.get(k, "")
+		if v == "" or v is None:
+			row.append("")
+		else:
+			try:
+				row.append(float(v))
+			except Exception:
+				row.append(v)
+
+	if perf_dir:
+		perf_data_path  = os.path.join(perf_dir, f"{num_threads}_perf.data")
+		perf_graph_path = os.path.join(perf_dir, f"{num_threads}_flamegraph.svg")
+		row.append(_hyperlink_formula(base_dir, perf_data_path,  f"{num_threads}_perf.data"))
+		row.append(_hyperlink_formula(base_dir, perf_graph_path, f"{num_threads}_flamegraph.svg"))
+	else:
+		row += ["", ""]
+
+	writer.writerow(row)
+	f_out.flush()
+
+def run_test(runs_per_test: int, cmd: str, num_threads: int, result_dir, perf_dir) -> Dict[str, float]:
 
 	w_output_file = os.path.join(result_dir, W_OUTPUT_FILENAME)
 	temp_file = os.path.join(result_dir, TMP_OUTPUT_FILENAME)
@@ -328,7 +309,23 @@ def run_test(runs_per_test: int, cmd: str, result_dir) -> Dict[str, float]:
 			wf.write(f'\n=== BEFORE RUN {i} ===\n')
 		subprocess.run(['bash', '-lc', f'w >> {w_output_file}'], check = False)
 
-		full_cmd = f'timeout {TIMEOUT_SEC} bash -lc "{cmd}; echo $? > done"'
+		if perf_dir is not None and i == 0:
+			inner = (
+			    f'perf record -F 99 -g -o "{perf_dir}/{num_threads}_perf.data" -- {cmd}; '
+			    f'status=$?; '
+			    f'perf script -i "{perf_dir}/{num_threads}_perf.data" | '
+			    f'"{FLAMEGRAPH_DIR}/stackcollapse-perf.pl" | '
+			    f'"{FLAMEGRAPH_DIR}/flamegraph.pl" > "{perf_dir}/{num_threads}_flamegraph.svg"; '
+			    f'echo "$status" > done'
+			)
+		else:
+			inner = f'{cmd}; echo $? > done'
+
+		full_cmd = (
+		    f'timeout {TIMEOUT_SEC} bash -lc '
+		    f'"set -o pipefail; {inner}"'
+		)
+
 		print(full_cmd)
 
 		with open(temp_file, 'a', encoding= 'utf-8', errors='ignore') as outf:
@@ -412,7 +409,7 @@ def execute_lbtree(
 	merge_threshold_ratio: int,
 	distribution_ratio: int,
 	rlu_max_ws: float,
-	result_dir) -> None:
+	result_dir, perf_dir) -> None:
 		
 		if alg_type in ('mvrlu', 'mvrlu_ordo'):
 			key_name = '                        n_aborts ='
@@ -434,8 +431,6 @@ def execute_lbtree(
 
 		with open(temp_file, 'w', encoding='utf-8') as f_w:
 			f_w.write('')
-
-		update_rate = add_ratio + remove_ratio
 
 		if index_type == "lbtree":
 			base = os.path.join(SCRIPT_DIR, BENCH_CMD_BASE[bench_type], LBTREE_CMD_BASE[alg_type])
@@ -471,15 +466,13 @@ def execute_lbtree(
 
 					if numa_prefix:
 						cmd = numa_prefix + cmd
-					if IS_PERF:
-						cmd = CMD_PREFIX_PERF + cmd
 
-					output_data = run_test(runs_per_test, cmd, result_dir)
+					output_data = run_test(runs_per_test, cmd, num_threads, result_dir, perf_dir)
 
 					print('complete')
 
 					with open(result_file, 'a', encoding='utf-8', newline='') as f_out:
-						print_run_results(f_out, output_data)
+						print_run_results(f_out, num_threads, perf_dir, output_data)
 			
 			try:
 				result_keys.remove(key_name)
@@ -574,7 +567,8 @@ if '__main__' == __name__:
 				merge_threshold_ratio = opts.merge_threshold_ratio,
 				distribution_ratio = opts.distribution_ratio,
 				rlu_max_ws = opts.rlu_max_ws,
-				result_dir = result_dir
+				result_dir = result_dir,
+				perf_dir = None
 			)
 
 
