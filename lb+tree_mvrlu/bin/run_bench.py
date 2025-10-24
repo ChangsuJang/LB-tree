@@ -4,6 +4,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2018-2019 Virginia Tech
 # SPDX-License-Identifier: Apache-2.0
 
+import shutil
 import json
 import os
 import argparse
@@ -42,8 +43,12 @@ if __name__ == '__main__':
         for index_type in index_type_list:
             for alg_type in alg_type_list:
                 result_dir = os.path.join(SCRIPT_DIR, 'results', bench_data, index_type, alg_type, f'u{update_rate}')
-                os.makedirs(result_dir, exist_ok=True)
 
+                if os.path.exists(result_dir):
+                    shutil.rmtree(result_dir)
+
+                os.makedirs(result_dir, exist_ok=True)
+                
                 if args.perf == 1:
                     perf_dir = os.path.join(result_dir, 'perf')
                     os.makedirs(perf_dir, exist_ok=True)

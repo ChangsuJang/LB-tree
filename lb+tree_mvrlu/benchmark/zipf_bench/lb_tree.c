@@ -308,6 +308,7 @@ restart:
     }
 
     if (result) {
+
         if (!RLU_TRY_LOCK(p_self, &p_header) || !RLU_TRY_LOCK(p_self, &p_curr) || !RLU_TRY_LOCK(p_self, &p_next)) {
             RLU_ABORT(p_self);
             goto restart;
@@ -317,10 +318,10 @@ restart:
         p_new->type = 0;
         p_new->key= input;
 
+        p_header->count ++;
+
         RLU_ASSIGN_PTR(p_self, &(p_new->p_next), p_next);
         RLU_ASSIGN_PTR(p_self, &(p_curr->p_next), p_new);
-
-        p_header->count++;
 
         if (p_header->count > split_thres && p_header->state == FREE) {
             p_header->state = SPLIT_REGIST;
@@ -380,12 +381,7 @@ restart:
     if (result) {
         p_next = (leaf_node_t *)RLU_DEREF(p_self, (p_curr->p_next));
 
-        if (!RLU_TRY_LOCK(p_self, &p_prev) || !RLU_TRY_LOCK_CONST(p_self, p_curr)) {
-            RLU_ABORT(p_self);
-            goto restart;
-        }
-
-        if (p_prev->type == NORMAL_TYPE && !RLU_TRY_LOCK(p_self, &p_header)) {
+         if (p_prev->type == NORMAL_TYPE && !RLU_TRY_LOCK(p_self, &p_header)) {
             RLU_ABORT(p_self);
             goto restart;
             p_header->count --;
@@ -393,9 +389,21 @@ restart:
             p_prev->count --;
         }
 
+        if (!RLU_TRY_LOCK(p_self, &p_prev) || !RLU_TRY_LOCK_CONST(p_self, p_curr)) {
+            RLU_ABORT(p_self);
+            goto restart;
+        }
+
         RLU_ASSIGN_PTR (p_self, &(p_prev->p_next), p_next);
 
         rlu_free_leaf(p_self, p_curr);
+
+        if (p_prev->type == NORMAL_TYPE) {
+            p_header->count --;
+        } else {
+            p_prev->count --;
+        }
+
 
         if (p_header->count < merge_thres && p_header->state == FREE) {
             p_header->state = MERGE_REGIST;

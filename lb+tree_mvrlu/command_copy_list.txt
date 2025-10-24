@@ -1,0 +1,10 @@
+python3 ./bin/run_bench.py -p 0
+
+ps aux | grep bench-rlu
+pkill -9 -f bench-rlu && echo "killed" || echo "not running"
+
+ps aux | grep bench-lbtree-rlu
+pkill -9 -f bench-lbtree-rlu && echo "killed" || echo "not running"
+
+ps aux | grep bench-lbtree-mvrlu-ordo
+pkill -9 -f bench-lbtree-mvrlu-ordo && echo "killed" || echo "not running"

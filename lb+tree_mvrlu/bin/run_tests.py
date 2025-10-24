@@ -8,11 +8,12 @@ import csv
 import pandas as pd
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+import shlex
 
 IS_NUMA = 1
 IS_2_SOCKET = 0
 IS_PERF = 0
-TIMEOUT_SEC = 300
+TIMEOUT_SEC = 20
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FLAMEGRAPH_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "FlameGraph")
@@ -290,7 +291,7 @@ def print_run_results(f_out, num_threads: int, perf_dir, result_message: Dict[st
 	writer.writerow(row)
 	f_out.flush()
 
-def run_test(runs_per_test: int, cmd: str, num_threads: int, result_dir, perf_dir) -> Dict[str, float]:
+def run_test(runs_per_test: int, cmd: str, alg_type: str, num_threads: int, result_dir, perf_dir) -> Dict[str, float]:
 
 	w_output_file = os.path.join(result_dir, W_OUTPUT_FILENAME)
 	temp_file = os.path.join(result_dir, TMP_OUTPUT_FILENAME)
@@ -337,6 +338,7 @@ def run_test(runs_per_test: int, cmd: str, num_threads: int, result_dir, perf_di
 
 		if not os.path.exists('done'):
 			print('no done file (timeout/kill) - retrying...')
+			os.system(f'pkill -9 -f {shlex.quote(LBTREE_CMD_BASE[alg_type])} && echo "killed" || echo "not running"')
 			time.sleep(5)
 			continue
 		
@@ -352,11 +354,13 @@ def run_test(runs_per_test: int, cmd: str, num_threads: int, result_dir, perf_di
 		
 		if rc == 124:
 			print('timeout (124) - retyring this run')
+			os.system(f'pkill -9 -f {shlex.quote(LBTREE_CMD_BASE[alg_type])} && echo "killed" || echo "not running"')
 			time.sleep(5)
 			continue
 
 		if rc == -11:
 			print('got -11 (SEGV) - retyring this run')
+			os.system(f'pkill -9 -f {shlex.quote(LBTREE_CMD_BASE[alg_type])} && echo "killed" || echo "not running"')
 			time.sleep(5)
 			continue
 
@@ -378,6 +382,7 @@ def run_test(runs_per_test: int, cmd: str, num_threads: int, result_dir, perf_di
 
 		if not result_msg:
 			print("no benchmark block parsed - retrying this run")
+			os.system(f'pkill -9 -f {shlex.quote(LBTREE_CMD_BASE[alg_type])} && echo "killed" || echo "not running"')
 			time.sleep(2)
 			continue
 		
@@ -467,7 +472,7 @@ def execute_lbtree(
 					if numa_prefix:
 						cmd = numa_prefix + cmd
 
-					output_data = run_test(runs_per_test, cmd, num_threads, result_dir, perf_dir)
+					output_data = run_test(runs_per_test, cmd, alg_type, num_threads, result_dir, perf_dir)
 
 					print('complete')
 

@@ -732,12 +732,13 @@ int lb_tree_init(multi_thread_data_t *p_data) {
     init_size = 0;
 
     if (p_data->uniq_id == 0) {
+        memset(p_data->p_smo, 0, sizeof(smo_t));
         printf("[%ld] Initializing\n", p_data->uniq_id);
         printf("[%ld] Adding %d entries to set\n", p_data->uniq_id, work_meta.init_size);
     } else { return -1;}
 
 #if defined(IS_RLU) && defined(IS_LBTREE)
-    while (init_size < work_meta.init_size) {
+    while (true) {
         if (p_data->p_smo->operator == 0) {
             key = rand_in_range(MIN_KEY, work_meta.key_range, p_data->seed) + 1;
             if (lb_tree_add(p_data, key, 2) == SUCCESS) {init_size ++;}
@@ -749,6 +750,7 @@ int lb_tree_init(multi_thread_data_t *p_data) {
         if (temp == p_data->p_smo->operator) {
             memset(p_data->p_smo, 0, sizeof(smo_t));
             temp = 0;
+            if (init_size < work_meta.init_size) {break;}
         }
     }
 #else
