@@ -8,3 +8,22 @@ pkill -9 -f bench-lbtree-rlu && echo "killed" || echo "not running"
 
 ps aux | grep bench-lbtree-mvrlu-ordo
 pkill -9 -f bench-lbtree-mvrlu-ordo && echo "killed" || echo "not running"
+
+
+
+
+git command
+
+Version List
+- e4eb610 20251026(Version_1_complete)
+
+Roll back
+
+git branch backup_yyyymmdd_current_version
+
+git checkout -b versional_restore (target_version / Ex: e4eb610)
+
+
+
+
+
