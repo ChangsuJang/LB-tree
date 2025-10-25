@@ -13,7 +13,7 @@ import shlex
 IS_NUMA = 1
 IS_2_SOCKET = 0
 IS_PERF = 0
-TIMEOUT_SEC = 20
+TIMEOUT_SEC = 60
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FLAMEGRAPH_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "FlameGraph")

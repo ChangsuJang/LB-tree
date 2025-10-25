@@ -1,5 +1,5 @@
 ////////// WORK LOAD //////////
---duration 10000
+--duration 1000
 --cycle 0
 --add_ratio 100
 --remove_ratio 0
@@ -14,6 +14,6 @@
 --distribution_ratio 50
 --load_tree 0
 ////////// THREADS META DATA //////////
---nb_threads 8
+--nb_threads 32
 --rlu_max_ws 1
 --base_seed 0

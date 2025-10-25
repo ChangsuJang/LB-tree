@@ -319,7 +319,7 @@ restart:
         p_new->key= input;
 
         p_header->count ++;
-
+        
         RLU_ASSIGN_PTR(p_self, &(p_new->p_next), p_next);
         RLU_ASSIGN_PTR(p_self, &(p_curr->p_next), p_new);
 
@@ -384,9 +384,6 @@ restart:
          if (p_prev->type == NORMAL_TYPE && !RLU_TRY_LOCK(p_self, &p_header)) {
             RLU_ABORT(p_self);
             goto restart;
-            p_header->count --;
-        } else {
-            p_prev->count --;
         }
 
         if (!RLU_TRY_LOCK(p_self, &p_prev) || !RLU_TRY_LOCK_CONST(p_self, p_curr)) {

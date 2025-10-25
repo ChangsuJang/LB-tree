@@ -750,7 +750,7 @@ int lb_tree_init(multi_thread_data_t *p_data) {
         if (temp == p_data->p_smo->operator) {
             memset(p_data->p_smo, 0, sizeof(smo_t));
             temp = 0;
-            if (init_size < work_meta.init_size) {break;}
+            if (init_size >= work_meta.init_size) {break;}
         }
     }
 #else
