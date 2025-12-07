@@ -706,7 +706,7 @@ int lb_tree_merge(multi_thread_data_t *p_rlu_data,  int option) {
 root_node_t* new_lbtree() {
     root_node_t *p_new;
 #ifdef IS_RLU
-    p_new = rlu_new_root();
+    p_new = rlu_new_tree();
 #else
 	printf("ERROR: benchmark not defined!\n");
 	abort();
@@ -750,8 +750,9 @@ int lb_tree_init(multi_thread_data_t *p_data) {
         if (temp == p_data->p_smo->operator) {
             memset(p_data->p_smo, 0, sizeof(smo_t));
             temp = 0;
-            if (init_size >= work_meta.init_size) {break;}
         }
+        
+        if (init_size >= work_meta.init_size) {break;}
     }
 #else
 #endif
@@ -804,62 +805,62 @@ void* rlu_test(void *arg) {
 
     while(stop == 0) {
          
-        basic_command = op_make(1);
+        // basic_command = op_make(1);
 
-        basic_op_result = 0;
-        sm_op_result = 0;
+        // basic_op_result = 0;
+        // sm_op_result = 0;
 
-        if (p_data->zipf) {
-            key = zipf_next(&zs);
-        } else {
-            key = rand_in_range(MIN_KEY, work_meta.key_range, p_data->seed)+1;
-        }
+        // if (p_data->zipf) {
+        //     key = zipf_next(&zs);
+        // } else {
+        //     key = rand_in_range(MIN_KEY, work_meta.key_range, p_data->seed)+1;
+        // }
 
-        if (p_data->p_smo->operator == 0) {
-            switch(basic_command) {
-                case 1:
-                    basic_op_result = lb_tree_add(p_data, key, 2);
-                    if (basic_op_result > 0) {
-                        p_data->nb_add++;
-                        p_data->diff++;
-                    }
-                    break;
-                case 2:
-                    basic_op_result = lb_tree_remove(p_data, key, 2);
-                    if (basic_op_result > 0) {
-                        p_data->nb_remove++;
-                        p_data->diff--;
-                    }
-                    break;
-                case 3:
-                   basic_op_result = lb_tree_search(p_data, key, 2);
-                   if (basic_op_result > 0) {
-                       p_data->nb_search++;
-                   }
-                   break;
-                case 4:
-                    basic_op_result = lb_tree_range_scan(p_data, key, 100, 2);
-                    break;
-            }
-        } else {
-            temp = p_data->p_smo->operator;
-            if (temp > 0) {
-                sm_op_result = lb_tree_split(p_data, 2);
-                if (sm_op_result) {
-                    if (temp == 10) {p_data->nb_header_split++;}
-                    else {p_data->nb_inner_split++;}
-                }
-            } else {
-                sm_op_result = lb_tree_merge(p_data, 2);
-                if (sm_op_result) {
-                    if (temp == -10) {p_data->nb_header_merge++;}
-                    else {p_data->nb_inner_merge++;}
-                }
-            }
-            if (temp == p_data->p_smo->operator) {
-                memset(p_data->p_smo, 0, sizeof(smo_t));
-            }
-        }
+        // if (p_data->p_smo->operator == 0) {
+        //     switch(basic_command) {
+        //         case 1:
+        //             basic_op_result = lb_tree_add(p_data, key, 2);
+        //             if (basic_op_result > 0) {
+        //                 p_data->nb_add++;
+        //                 p_data->diff++;
+        //             }
+        //             break;
+        //         case 2:
+        //             basic_op_result = lb_tree_remove(p_data, key, 2);
+        //             if (basic_op_result > 0) {
+        //                 p_data->nb_remove++;
+        //                 p_data->diff--;
+        //             }
+        //             break;
+        //         case 3:
+        //            basic_op_result = lb_tree_search(p_data, key, 2);
+        //            if (basic_op_result > 0) {
+        //                p_data->nb_search++;
+        //            }
+        //            break;
+        //         case 4:
+        //             basic_op_result = lb_tree_range_scan(p_data, key, 100, 2);
+        //             break;
+        //     }
+        // } else {
+        //     temp = p_data->p_smo->operator;
+        //     if (temp > 0) {
+        //         sm_op_result = lb_tree_split(p_data, 2);
+        //         if (sm_op_result) {
+        //             if (temp == 10) {p_data->nb_header_split++;}
+        //             else {p_data->nb_inner_split++;}
+        //         }
+        //     } else {
+        //         sm_op_result = lb_tree_merge(p_data, 2);
+        //         if (sm_op_result) {
+        //             if (temp == -10) {p_data->nb_header_merge++;}
+        //             else {p_data->nb_inner_merge++;}
+        //         }
+        //     }
+        //     if (temp == p_data->p_smo->operator) {
+        //         memset(p_data->p_smo, 0, sizeof(smo_t));
+        //     }
+        // }
     }
     return NULL;
 }
@@ -974,7 +975,7 @@ int main(int argc, char **argv) {
     
     local_thread_print(p_rlu_data, 2);
 
-    // lb_tree_print(p_rlu_data, 10, -1, 2);
+    lb_tree_print(p_rlu_data, 10, -1, 2);
 
     local_free_thread(&p_rlu_thread, &p_rlu_data);
     free_rand(p_thread_seed);

@@ -8,5 +8,6 @@
         "pre_define.h": "c",
         "lb_tree.h": "c",
         "numa-config.h": "c"
-    }
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

@@ -821,7 +821,7 @@ int main(int argc, char **argv) {
     
     local_thread_print(p_single_data, p_rlu_data, 2);
 
-    lb_tree_print(p_single_data, p_rlu_data, 10, -1, 2);
+    // lb_tree_print(p_single_data, p_rlu_data, 10, -1, 2);
 
     measurements_print();
 
